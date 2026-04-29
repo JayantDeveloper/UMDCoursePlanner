@@ -5,6 +5,7 @@ import { getProfScore, GRADE_COLORS, PRIORITY_COLORS } from "../utils";
 
 const LS_KEY = "umd_course_planner";
 
+
 async function fetchProfessorsForCourse(courseId, termId, backendUrl) {
   const sectionsResp = await axios.post(`${backendUrl}/api/sections`, { courseId, termId });
   const compareResp  = await axios.post(`${backendUrl}/api/compare`, {
@@ -43,8 +44,9 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const [manualInput, setManualInput] = useState("");
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError]     = useState("");
-  const [pasteMode, setPasteMode] = useState(false);
-  const [pasteText, setPasteText] = useState("");
+  const [pasteMode, setPasteMode]           = useState(false);
+  const [pasteText, setPasteText]           = useState("");
+  const [waitingClipboard, setWaitingClipboard] = useState(false);
 
   // Recommendations
   const [termId, setTermId]               = useState(semesters[0]?.termId || "");
@@ -57,10 +59,12 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   // Best professor per card (from /api/best-professors)
   const [bestProfessors, setBestProfessors] = useState({});
 
-  const majorRef  = useRef(null);
-  const major2Ref = useRef(null);
-  const minorRef  = useRef(null);
-  const minor2Ref = useRef(null);
+  const majorRef         = useRef(null);
+  const major2Ref        = useRef(null);
+  const minorRef         = useRef(null);
+  const minor2Ref        = useRef(null);
+  const clipboardCleanup = useRef(null);
+  const testudoWinRef    = useRef(null);
 
   // ── Sync semesters ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -221,26 +225,21 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     }
   };
 
-  const handleOpenTestudo = () => {
-    window.open("https://app.testudo.umd.edu/#/main/uotrans?null", "_blank");
-    setPasteMode(true);
-  };
-
-  const handlePasteSubmit = async () => {
-    if (!pasteText.trim()) return;
+  const parseAndApplyTranscript = async (text) => {
     setTranscriptLoading(true); setTranscriptError("");
     let detectedMajor = "", allCourses = [];
     try {
-      const resp = await axios.post(`${backendUrl}/api/parse-transcript`, { text: pasteText }, { timeout: 30000 });
+      const resp = await axios.post(`${backendUrl}/api/parse-transcript`, { text }, { timeout: 30000 });
       detectedMajor = resp.data.detected_major || "";
       allCourses = [
         ...(resp.data.completed || []),
         ...(resp.data.in_progress || []).map((c) => ({ ...c, inProgress: true })),
       ];
       setCompletedCourses(allCourses);
-      setPasteText(""); setPasteMode(false);
+      setPasteText(""); setPasteMode(false); setWaitingClipboard(false);
     } catch (err) {
       setTranscriptError(err?.response?.data?.error || "Could not parse transcript. Make sure you copied the full page.");
+      setPasteMode(true); setWaitingClipboard(false);
       return;
     } finally {
       setTranscriptLoading(false);
@@ -253,6 +252,57 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
         if (reqs) await runRecommendations({ majorVal: match, majorReqsVal: reqs, completedCoursesVal: allCourses });
       }
     }
+  };
+
+  const TESTUDO_URL = "https://app.testudo.umd.edu/#/main/uotrans?null";
+
+  const handleOpenTestudo = () => {
+    if (clipboardCleanup.current) { clipboardCleanup.current(); clipboardCleanup.current = null; }
+    testudoWinRef.current = window.open(TESTUDO_URL, "_blank");
+    setWaitingClipboard(true); setPasteMode(false); setTranscriptError("");
+
+    const onFocus = async () => {
+      if (!document.hasFocus()) return;
+      cleanup();
+      try {
+        const text = await navigator.clipboard.readText();
+        const looksLikeTranscript =
+          text.includes("UNIVERSITY OF MARYLAND") ||
+          text.includes("UNOFFICIAL TRANSCRIPT") ||
+          text.includes("Historic Course Information") ||
+          text.includes("Transfer Credit Information");
+        if (looksLikeTranscript) {
+          await parseAndApplyTranscript(text);
+          return;
+        }
+        // Clipboard didn't have transcript — probably landed on Schedule page after CAS login.
+        // Re-navigate the Testudo tab to the transcript URL (cross-origin navigation is allowed).
+        try {
+          if (testudoWinRef.current && !testudoWinRef.current.closed) {
+            testudoWinRef.current.location.href = TESTUDO_URL;
+          }
+        } catch (_) {}
+        setTranscriptError("Looks like Testudo redirected you to the Schedule page after login. We've sent the Testudo tab to your transcript — copy it again (Ctrl+A, Ctrl+C) and switch back here.");
+        setWaitingClipboard(true);
+        // Re-register listener for the second attempt
+        window.addEventListener("focus", onFocus);
+        clipboardCleanup.current = cleanup;
+        return;
+      } catch (_) { /* clipboard permission denied */ }
+      setWaitingClipboard(false); setPasteMode(true);
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("focus", onFocus);
+      clipboardCleanup.current = null;
+    };
+    clipboardCleanup.current = cleanup;
+    window.addEventListener("focus", onFocus);
+  };
+
+  const handlePasteSubmit = async () => {
+    if (!pasteText.trim()) return;
+    await parseAndApplyTranscript(pasteText);
   };
 
   // ── Transcript import — auto-chains to requirements + recommendations ─────
@@ -355,10 +405,32 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               )}
               {transcriptError && <p className="error">{transcriptError}</p>}
             </>
+          ) : transcriptLoading ? (
+            /* ── Deployed: parsing in progress ── */
+            <div className="transcript-steps">
+              <p className="transcript-steps-title"><span className="transcript-spinner" /> Importing your transcript…</p>
+            </div>
+          ) : waitingClipboard ? (
+            /* ── Deployed: waiting for user to copy on Testudo tab ── */
+            <>
+              <div className="transcript-steps">
+                <p className="transcript-steps-title">On the Testudo tab that just opened:</p>
+                <ol>
+                  <li>Log in with your UMD credentials &amp; Duo</li>
+                  <li>Press <strong>Ctrl+A</strong> to select all, then <strong>Ctrl+C</strong> to copy</li>
+                  <li>Switch back to this tab — it imports automatically</li>
+                </ol>
+              </div>
+              <button type="button" className="secondary" style={{ marginTop: 8 }}
+                onClick={() => { setWaitingClipboard(false); setPasteMode(true); if (clipboardCleanup.current) { clipboardCleanup.current(); } }}>
+                Paste manually instead
+              </button>
+              {transcriptError && <p className="error">{transcriptError}</p>}
+            </>
           ) : !pasteMode ? (
             /* ── Deployed: Import button ── */
             <>
-              <p className="section-hint">Opens your Testudo transcript in a new tab — log in, copy the page, paste below.</p>
+              <p className="section-hint">Opens your Testudo transcript in a new tab — switch back after copying and it imports automatically.</p>
               <button
                 type="button"
                 className="transcript-btn"
@@ -369,13 +441,12 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               </button>
             </>
           ) : (
-            /* ── Deployed: paste textarea ── */
+            /* ── Deployed: paste textarea fallback ── */
             <>
               <div className="transcript-steps" style={{ marginBottom: 12 }}>
-                <p className="transcript-steps-title">Copy &amp; paste your transcript:</p>
+                <p className="transcript-steps-title">Paste your transcript:</p>
                 <ol>
-                  <li>On the Testudo tab that just opened, log in with Duo</li>
-                  <li>Press <strong>Ctrl+A</strong> then <strong>Ctrl+C</strong> to select and copy everything</li>
+                  <li>On the Testudo tab, press <strong>Ctrl+A</strong> then <strong>Ctrl+C</strong></li>
                   <li>Paste below and click <strong>Parse Transcript</strong></li>
                 </ol>
               </div>
@@ -383,7 +454,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
                 placeholder="Paste your transcript text here…"
-                rows={6}
+                rows={5}
                 style={{
                   width: "100%", borderRadius: 12, border: "1px solid #d1c4b1",
                   padding: "10px 12px", fontSize: 12, fontFamily: "Space Mono, monospace",
@@ -402,7 +473,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                     : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Parse Transcript</>}
                 </button>
                 <button type="button" className="secondary" style={{ alignSelf: "center" }}
-                  onClick={() => { setPasteMode(false); setPasteText(""); setTranscriptError(""); }}>
+                  onClick={() => { setPasteMode(false); setPasteText(""); setTranscriptError(""); setWaitingClipboard(false); }}>
                   Cancel
                 </button>
               </div>
