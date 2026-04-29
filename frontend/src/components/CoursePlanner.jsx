@@ -210,7 +210,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
 
   const handleOpenTestudo = () => {
     const popup = window.open(
-      "https://app.testudo.umd.edu/#/main/uotrans?null",
+      "https://app.testudo.umd.edu/",
       "testudo_transcript",
       "width=1100,height=750,scrollbars=yes"
     );
@@ -379,7 +379,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               <p className="transcript-steps-title">Testudo opened in a new window —</p>
               <ol>
                 <li>Log in with your UMD credentials + Duo</li>
-                <li>Navigate to <strong>Unofficial Transcript</strong> if not already there</li>
+                <li>Once logged in, click <strong>Student Records</strong> → <strong>Unofficial Transcript</strong></li>
                 <li>
                   Drag{" "}
                   <a
@@ -409,11 +409,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 <p className="transcript-steps-title">Paste your transcript text:</p>
                 <ol>
                   <li>
-                    <a href="https://app.testudo.umd.edu/#/main/uotrans?null" target="_blank" rel="noopener noreferrer"
+                    <a href="https://app.testudo.umd.edu/" target="_blank" rel="noopener noreferrer"
                       style={{ color: "#be7c4a", fontWeight: 600 }}>
-                      Open Testudo Unofficial Transcript ↗
+                      Log in to Testudo ↗
                     </a>
-                    {" "}and log in with Duo
+                    {" "}then go to Student Records → Unofficial Transcript
                   </li>
                   <li>Press <strong>Ctrl+A</strong> then <strong>Ctrl+C</strong> to copy all</li>
                   <li>Paste below and click <strong>Parse Transcript</strong></li>
