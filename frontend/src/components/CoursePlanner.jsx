@@ -210,7 +210,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
 
   const handleOpenTestudo = () => {
     const popup = window.open(
-      "https://app.testudo.umd.edu/#/main/uotrans",
+      "https://app.testudo.umd.edu/#/main/uotrans?null",
       "testudo_transcript",
       "width=1100,height=750,scrollbars=yes"
     );
@@ -409,7 +409,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 <p className="transcript-steps-title">Paste your transcript text:</p>
                 <ol>
                   <li>
-                    <a href="https://app.testudo.umd.edu/#/main/uotrans" target="_blank" rel="noopener noreferrer"
+                    <a href="https://app.testudo.umd.edu/#/main/uotrans?null" target="_blank" rel="noopener noreferrer"
                       style={{ color: "#be7c4a", fontWeight: 600 }}>
                       Open Testudo Unofficial Transcript ↗
                     </a>
