@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { getProfScore, GRADE_COLORS, PRIORITY_COLORS } from "../utils";
 
-const BOOKMARKLET = `javascript:(function(){if(!window.opener){alert('Run this bookmark from the Testudo popup opened by UMD Planner — not here.');return;}window.opener.postMessage({type:'umd_transcript',text:document.body.innerText},'*');setTimeout(function(){window.close();},300);})();`;
 
 const LS_KEY = "umd_course_planner";
 
@@ -44,9 +43,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const [manualInput, setManualInput] = useState("");
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError]     = useState("");
-  const [importMode, setImportMode] = useState(null); // null | 'waiting' | 'paste'
-  const [pasteText, setPasteText]   = useState("");
-  const popupRef = useRef(null);
+  const [pasteMode, setPasteMode] = useState(false);
+  const [pasteText, setPasteText] = useState("");
 
   // Recommendations
   const [termId, setTermId]               = useState(semesters[0]?.termId || "");
@@ -223,62 +221,9 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     }
   };
 
-  // ── postMessage listener — receives transcript from bookmarklet ──────────
-  useEffect(() => {
-    const handler = async (e) => {
-      if (!e.data || e.data.type !== "umd_transcript") return;
-      const text = e.data.text;
-      if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
-      popupRef.current = null;
-      setImportMode(null);
-      setTranscriptLoading(true); setTranscriptError("");
-      let detectedMajor = "", allCourses = [];
-      try {
-        const resp = await axios.post(`${backendUrl}/api/parse-transcript`, { text }, { timeout: 30000 });
-        detectedMajor = resp.data.detected_major || "";
-        allCourses = [
-          ...(resp.data.completed || []),
-          ...(resp.data.in_progress || []).map((c) => ({ ...c, inProgress: true })),
-        ];
-        setCompletedCourses(allCourses);
-      } catch (err) {
-        setTranscriptError(err?.response?.data?.error || "Could not parse transcript.");
-        return;
-      } finally {
-        setTranscriptLoading(false);
-      }
-      if (detectedMajor && programs.length > 0) {
-        const match = findBestMajorMatch(programs, detectedMajor);
-        if (match) {
-          setMajor(match); setMajorQuery(match.name); setMajorReqs(null);
-          const reqs = await fetchRequirements(match, "major");
-          if (reqs) await runRecommendations({ majorVal: match, majorReqsVal: reqs, completedCoursesVal: allCourses });
-        }
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [backendUrl, programs]);
-
   const handleOpenTestudo = () => {
-    const popup = window.open(
-      "https://app.testudo.umd.edu/#/main/uotrans?null",
-      "_blank"
-    );
-    if (!popup || popup.closed) {
-      setImportMode("paste");
-      return;
-    }
-    popupRef.current = popup;
-    setImportMode("waiting");
-  };
-
-  const cancelImport = () => {
-    if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
-    popupRef.current = null;
-    setImportMode(null);
-    setPasteText("");
-    setTranscriptError("");
+    window.open("https://app.testudo.umd.edu/#/main/uotrans?null", "_blank");
+    setPasteMode(true);
   };
 
   const handlePasteSubmit = async () => {
@@ -293,7 +238,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
         ...(resp.data.in_progress || []).map((c) => ({ ...c, inProgress: true })),
       ];
       setCompletedCourses(allCourses);
-      setPasteText(""); setImportMode(null);
+      setPasteText(""); setPasteMode(false);
     } catch (err) {
       setTranscriptError(err?.response?.data?.error || "Could not parse transcript. Make sure you copied the full page.");
       return;
@@ -410,65 +355,27 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               )}
               {transcriptError && <p className="error">{transcriptError}</p>}
             </>
-          ) : importMode === null ? (
-            /* ── Deployed: show Import button ── */
+          ) : !pasteMode ? (
+            /* ── Deployed: Import button ── */
             <>
-              <p className="section-hint">Detects your major automatically and pulls all your completed courses.</p>
+              <p className="section-hint">Opens your Testudo transcript in a new tab — log in, copy the page, paste below.</p>
               <button
                 type="button"
-                className={`transcript-btn ${transcriptLoading ? "transcript-btn-waiting" : ""}`}
+                className="transcript-btn"
                 onClick={handleOpenTestudo}
-                disabled={transcriptLoading}
               >
-                {transcriptLoading
-                  ? <><span className="transcript-spinner" />Parsing transcript…</>
-                  : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Import from Testudo</>}
+                <img src="/testudo-example-color.webp" alt="" className="testudo-icon" />
+                Import from Testudo
               </button>
-              {transcriptError && <p className="error">{transcriptError}</p>}
             </>
-          ) : importMode === "waiting" ? (
-            /* ── Deployed: popup open, show bookmarklet instructions ── */
-            <div className="transcript-steps">
-              <p className="transcript-steps-title">Testudo opened in a new tab —</p>
-              <ol>
-                <li>Log in with your UMD credentials + Duo</li>
-                <li>You'll land on your Unofficial Transcript automatically</li>
-                <li>
-                  Drag{" "}
-                  <a
-                    href={BOOKMARKLET}
-                    className="bookmarklet-link"
-                    draggable="true"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    📋 Send to Planner
-                  </a>
-                  {" "}to your bookmarks bar (one-time), then click it on the transcript page — data transfers automatically
-                </li>
-              </ol>
-              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                <button type="button" className="secondary" onClick={() => setImportMode("paste")}>
-                  Paste manually instead
-                </button>
-                <button type="button" className="secondary" onClick={cancelImport}>
-                  Cancel
-                </button>
-              </div>
-            </div>
           ) : (
-            /* ── Deployed: paste textarea fallback ── */
+            /* ── Deployed: paste textarea ── */
             <>
               <div className="transcript-steps" style={{ marginBottom: 12 }}>
-                <p className="transcript-steps-title">Paste your transcript text:</p>
+                <p className="transcript-steps-title">Copy &amp; paste your transcript:</p>
                 <ol>
-                  <li>
-                    <a href="https://app.testudo.umd.edu/#/main/uotrans?null" target="_blank" rel="noopener noreferrer"
-                      style={{ color: "#be7c4a", fontWeight: 600 }}>
-                      Open Testudo Unofficial Transcript ↗
-                    </a>
-                    {" "}and log in with Duo
-                  </li>
-                  <li>Press <strong>Ctrl+A</strong> then <strong>Ctrl+C</strong> to copy all</li>
+                  <li>On the Testudo tab that just opened, log in with Duo</li>
+                  <li>Press <strong>Ctrl+A</strong> then <strong>Ctrl+C</strong> to select and copy everything</li>
                   <li>Paste below and click <strong>Parse Transcript</strong></li>
                 </ol>
               </div>
@@ -495,7 +402,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                     : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Parse Transcript</>}
                 </button>
                 <button type="button" className="secondary" style={{ alignSelf: "center" }}
-                  onClick={cancelImport}>
+                  onClick={() => { setPasteMode(false); setPasteText(""); setTranscriptError(""); }}>
                   Cancel
                 </button>
               </div>
