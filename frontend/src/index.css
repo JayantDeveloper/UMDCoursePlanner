@@ -742,6 +742,46 @@ button:disabled {
   vertical-align: middle;
 }
 
+.add-program-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.add-program-btn {
+  background: transparent;
+  border: 1.5px dashed #c4b09a;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a5c3a;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.add-program-btn:hover {
+  background: #f5ede2;
+  border-color: #a07850;
+}
+
+.remove-program-btn {
+  background: transparent;
+  border: none;
+  color: #a07050;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0 0 6px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.remove-program-btn:hover {
+  color: #c03030;
+}
+
 .clear-session-btn {
   background: transparent;
   color: #be7c4a;

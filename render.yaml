@@ -3,7 +3,7 @@ services:
     name: umd-course-planner-backend
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && gunicorn -w 2 -b 0.0.0.0:$PORT app:app
+    startCommand: cd backend && gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 app:app
     envVars:
       - key: GROQ_API_KEY
         sync: false

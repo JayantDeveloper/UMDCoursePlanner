@@ -85,22 +85,31 @@ def parse_transcript():
 def get_recommend():
     payload = request.get_json(silent=True) or {}
 
-    major_name = (payload.get("majorName") or "").strip()
-    major_reqs = payload.get("majorReqs") or {}
-    minor_name = (payload.get("minorName") or "").strip() or None
-    minor_reqs = payload.get("minorReqs") or None
+    # Accept array format (primary): [{name, reqs}, ...]
+    majors = payload.get("majors") or []
+    minors = payload.get("minors") or []
+
+    # Backward-compat: single majorName/majorReqs/minorName/minorReqs
+    if not majors:
+        mn = (payload.get("majorName") or "").strip()
+        mr = payload.get("majorReqs") or {}
+        if mn:
+            majors = [{"name": mn, "reqs": mr}]
+    if not minors:
+        mn = (payload.get("minorName") or "").strip()
+        mr = payload.get("minorReqs") or None
+        if mn and mr is not None:
+            minors = [{"name": mn, "reqs": mr}]
+
     completed_courses = payload.get("completedCourses") or []
     term_id = (payload.get("termId") or "").strip()
     interests = (payload.get("interests") or "").strip()
 
-    if not major_name or not term_id:
-        return jsonify({"error": "majorName and termId are required"}), 400
+    if not majors or not term_id:
+        return jsonify({"error": "majors and termId are required"}), 400
 
     try:
-        result = get_recommendations(
-            major_name, major_reqs, minor_name, minor_reqs,
-            completed_courses, term_id, interests,
-        )
+        result = get_recommendations(majors, minors, completed_courses, term_id, interests)
         return jsonify(result)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 500

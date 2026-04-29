@@ -136,10 +136,8 @@ _GRADE_QUAL_RE = re.compile(
 
 
 def _build_recommend_prompt(
-    major_name: str,
-    major_reqs: dict,
-    minor_name: Optional[str],
-    minor_reqs: Optional[dict],
+    majors: List[dict],
+    minors: List[dict],
     completed_ids: List[str],
     available_courses: List[dict],
     term_label: str,
@@ -151,7 +149,7 @@ def _build_recommend_prompt(
 
     def fmt_sections(reqs: dict) -> str:
         lines = []
-        for sec in reqs.get("sections", []):
+        for sec in (reqs or {}).get("sections", []):
             lines.append(f"\n  [{sec.get('type','').upper()}] {sec.get('title','')}")
             n = sec.get("select_n")
             if n:
@@ -185,11 +183,22 @@ def _build_recommend_prompt(
         else "ALL GEN-ED REQUIREMENTS SATISFIED\n\n"
     )
 
+    multi = len(majors) > 1
+    majors_block = ""
+    for i, m in enumerate(majors):
+        label = f"MAJOR {i + 1}" if multi else "MAJOR"
+        majors_block += f"{label}: {m['name']}\n{label} REQUIREMENTS:{fmt_sections(m.get('reqs', {}))}\n\n"
+
+    minors_block = ""
+    multi_min = len(minors) > 1
+    for i, m in enumerate(minors):
+        label = f"MINOR {i + 1}" if multi_min else "MINOR"
+        minors_block += f"{label}: {m['name']}\n{label} REQUIREMENTS:{fmt_sections(m.get('reqs', {}))}\n\n"
+
     return (
         "You are an expert UMD academic advisor. Help this student plan their next semester.\n\n"
-        f"MAJOR: {major_name}\n"
-        f"MAJOR REQUIREMENTS:{fmt_sections(major_reqs)}\n\n"
-        + (f"MINOR: {minor_name}\nMINOR REQUIREMENTS:{fmt_sections(minor_reqs)}\n\n" if minor_name and minor_reqs else "")
+        + majors_block
+        + minors_block
         + f"COMPLETED COURSES: {', '.join(completed_ids) or 'None provided'}\n\n"
         + gened_section
         + f"AVAILABLE NEXT SEMESTER ({term_label}):\n{avail_str}\n\n"
@@ -209,10 +218,8 @@ def _build_recommend_prompt(
 
 
 def get_recommendations(
-    major_name: str,
-    major_reqs: dict,
-    minor_name: Optional[str],
-    minor_reqs: Optional[dict],
+    majors: List[dict],
+    minors: List[dict],
     completed_courses: List,
     term_id: str,
     interests: str,
@@ -220,14 +227,19 @@ def get_recommendations(
     sem_map = {"01": "Spring", "05": "Summer", "08": "Fall", "12": "Winter"}
     sem_label = f"{sem_map.get(term_id[-2:], '')} {term_id[:4]}"
 
+    multi_maj = len(majors) > 1
+    multi_min = len(minors) > 1
     req_tags: Dict[str, List[str]] = {}
-    for sec in major_reqs.get("sections", []):
-        tag = "Major Required" if sec.get("type") == "required" else "Major Elective"
-        for c in sec.get("courses", []):
-            req_tags.setdefault(c["course_id"], []).append(tag)
-    if minor_reqs:
-        for sec in minor_reqs.get("sections", []):
-            tag = "Minor Required" if sec.get("type") == "required" else "Minor Elective"
+    for i, m in enumerate(majors):
+        prefix = f"Major {i + 1}" if multi_maj else "Major"
+        for sec in (m.get("reqs") or {}).get("sections", []):
+            tag = f"{prefix} Required" if sec.get("type") == "required" else f"{prefix} Elective"
+            for c in sec.get("courses", []):
+                req_tags.setdefault(c["course_id"], []).append(tag)
+    for i, m in enumerate(minors):
+        prefix = f"Minor {i + 1}" if multi_min else "Minor"
+        for sec in (m.get("reqs") or {}).get("sections", []):
+            tag = f"{prefix} Required" if sec.get("type") == "required" else f"{prefix} Elective"
             for c in sec.get("courses", []):
                 req_tags.setdefault(c["course_id"], []).append(tag)
 
@@ -295,7 +307,7 @@ def get_recommendations(
             gened_lookup[cid] = flat
 
     prompt = _build_recommend_prompt(
-        major_name, major_reqs, minor_name, minor_reqs,
+        majors, minors,
         completed_ids, available, sem_label, interests, req_tags,
         outstanding_geneds,
     )

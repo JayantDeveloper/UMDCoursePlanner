@@ -16,17 +16,27 @@ async function fetchProfessorsForCourse(courseId, termId, backendUrl) {
 
 export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, transcriptEnabled = true }) {
   // Program selection
-  const [programs, setPrograms]       = useState([]);
-  const [majorQuery, setMajorQuery]   = useState("");
-  const [minorQuery, setMinorQuery]   = useState("");
-  const [major, setMajor]             = useState(null);
-  const [minor, setMinor]             = useState(null);
+  const [programs, setPrograms]           = useState([]);
+  const [majorQuery, setMajorQuery]       = useState("");
+  const [major, setMajor]                 = useState(null);
   const [majorDropOpen, setMajorDropOpen] = useState(false);
+  const [major2Query, setMajor2Query]     = useState("");
+  const [major2, setMajor2]               = useState(null);
+  const [major2DropOpen, setMajor2DropOpen] = useState(false);
+  const [showMajor2, setShowMajor2]       = useState(false);
+  const [minorQuery, setMinorQuery]       = useState("");
+  const [minor, setMinor]                 = useState(null);
   const [minorDropOpen, setMinorDropOpen] = useState(false);
+  const [minor2Query, setMinor2Query]     = useState("");
+  const [minor2, setMinor2]               = useState(null);
+  const [minor2DropOpen, setMinor2DropOpen] = useState(false);
+  const [showMinor2, setShowMinor2]       = useState(false);
 
   // Requirements
   const [majorReqs, setMajorReqs]     = useState(null);
+  const [major2Reqs, setMajor2Reqs]   = useState(null);
   const [minorReqs, setMinorReqs]     = useState(null);
+  const [minor2Reqs, setMinor2Reqs]   = useState(null);
   const [loadingReqs, setLoadingReqs] = useState(false);
 
   // Transcript / completed courses
@@ -49,8 +59,10 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   // Best professor per card (from /api/best-professors)
   const [bestProfessors, setBestProfessors] = useState({});
 
-  const majorRef = useRef(null);
-  const minorRef = useRef(null);
+  const majorRef  = useRef(null);
+  const major2Ref = useRef(null);
+  const minorRef  = useRef(null);
+  const minor2Ref = useRef(null);
 
   // ── Sync semesters ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -69,23 +81,29 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     try {
       const d = JSON.parse(saved);
       if (d.completedCourses?.length) setCompletedCourses(d.completedCourses);
-      if (d.major)    { setMajor(d.major);   setMajorQuery(d.major.name); }
-      if (d.majorReqs)  setMajorReqs(d.majorReqs);
-      if (d.minor)    { setMinor(d.minor);   setMinorQuery(d.minor.name); }
-      if (d.minorReqs)  setMinorReqs(d.minorReqs);
+      if (d.major)      { setMajor(d.major);   setMajorQuery(d.major.name); }
+      if (d.majorReqs)    setMajorReqs(d.majorReqs);
+      if (d.major2)     { setMajor2(d.major2); setMajor2Query(d.major2.name); setShowMajor2(true); }
+      if (d.major2Reqs)   setMajor2Reqs(d.major2Reqs);
+      if (d.minor)      { setMinor(d.minor);   setMinorQuery(d.minor.name); }
+      if (d.minorReqs)    setMinorReqs(d.minorReqs);
+      if (d.minor2)     { setMinor2(d.minor2); setMinor2Query(d.minor2.name); setShowMinor2(true); }
+      if (d.minor2Reqs)   setMinor2Reqs(d.minor2Reqs);
       if (d.recommendations?.length) setRecommendations(d.recommendations);
-      if (d.termLabel)  setTermLabel(d.termLabel);
-      if (d.interests)  setInterests(d.interests);
+      if (d.termLabel)    setTermLabel(d.termLabel);
+      if (d.interests)    setInterests(d.interests);
     } catch (_) {}
   }, []);
 
   // ── localStorage: persist on change ──────────────────────────────────────
   useEffect(() => {
     localStorage.setItem(LS_KEY, JSON.stringify({
-      completedCourses, major, majorReqs, minor, minorReqs,
+      completedCourses,
+      major, majorReqs, major2, major2Reqs,
+      minor, minorReqs, minor2, minor2Reqs,
       recommendations, termLabel, interests,
     }));
-  }, [completedCourses, major, majorReqs, minor, minorReqs, recommendations, termLabel, interests]);
+  }, [completedCourses, major, majorReqs, major2, major2Reqs, minor, minorReqs, minor2, minor2Reqs, recommendations, termLabel, interests]);
 
   // ── Fetch best professors after recommendations load ──────────────────────
   useEffect(() => {
@@ -102,8 +120,10 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   // ── Close dropdowns on outside click ─────────────────────────────────────
   useEffect(() => {
     const h = (e) => {
-      if (majorRef.current && !majorRef.current.contains(e.target)) setMajorDropOpen(false);
-      if (minorRef.current && !minorRef.current.contains(e.target)) setMinorDropOpen(false);
+      if (majorRef.current  && !majorRef.current.contains(e.target))  setMajorDropOpen(false);
+      if (major2Ref.current && !major2Ref.current.contains(e.target)) setMajor2DropOpen(false);
+      if (minorRef.current  && !minorRef.current.contains(e.target))  setMinorDropOpen(false);
+      if (minor2Ref.current && !minor2Ref.current.contains(e.target)) setMinor2DropOpen(false);
     };
     document.addEventListener("click", h);
     return () => document.removeEventListener("click", h);
@@ -113,9 +133,14 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const filteredMajors = programs
     .filter((p) => p.type === "major" && p.name.toLowerCase().includes(majorQuery.toLowerCase()))
     .slice(0, 12);
-
+  const filteredMajors2 = programs
+    .filter((p) => p.type === "major" && p.name.toLowerCase().includes(major2Query.toLowerCase()))
+    .slice(0, 12);
   const filteredMinors = programs
     .filter((p) => p.type === "minor" && p.name.toLowerCase().includes(minorQuery.toLowerCase()))
+    .slice(0, 12);
+  const filteredMinors2 = programs
+    .filter((p) => p.type === "minor" && p.name.toLowerCase().includes(minor2Query.toLowerCase()))
     .slice(0, 12);
 
   // ── Requirements ─────────────────────────────────────────────────────────
@@ -126,8 +151,10 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       const resp = await axios.post(`${backendUrl}/api/requirements`, {
         catalogUrl: program.url, programName: program.name,
       });
-      if (type === "major") setMajorReqs(resp.data);
-      else setMinorReqs(resp.data);
+      if (type === "major")  setMajorReqs(resp.data);
+      else if (type === "major2") setMajor2Reqs(resp.data);
+      else if (type === "minor")  setMinorReqs(resp.data);
+      else if (type === "minor2") setMinor2Reqs(resp.data);
       return resp.data;
     } catch (err) {
       console.error("Requirements fetch failed:", err);
@@ -142,26 +169,51 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     setMajorDropOpen(false); setMajorReqs(null);
     fetchRequirements(prog, "major");
   };
+  const selectMajor2 = (prog) => {
+    setMajor2(prog); setMajor2Query(prog.name);
+    setMajor2DropOpen(false); setMajor2Reqs(null);
+    fetchRequirements(prog, "major2");
+  };
+  const removeMajor2 = () => {
+    setShowMajor2(false); setMajor2(null); setMajor2Query(""); setMajor2Reqs(null);
+  };
 
   const selectMinor = (prog) => {
     setMinor(prog); setMinorQuery(prog.name);
     setMinorDropOpen(false); setMinorReqs(null);
     fetchRequirements(prog, "minor");
   };
+  const selectMinor2 = (prog) => {
+    setMinor2(prog); setMinor2Query(prog.name);
+    setMinor2DropOpen(false); setMinor2Reqs(null);
+    fetchRequirements(prog, "minor2");
+  };
+  const removeMinor2 = () => {
+    setShowMinor2(false); setMinor2(null); setMinor2Query(""); setMinor2Reqs(null);
+  };
 
   // ── Recommendations — accepts overrides for auto-chain from transcript ────
   const runRecommendations = async ({ majorVal, majorReqsVal, completedCoursesVal } = {}) => {
-    const maj      = majorVal          ?? major;
-    const reqs     = majorReqsVal      ?? majorReqs;
+    const m1        = majorVal          ?? major;
+    const r1        = majorReqsVal      ?? majorReqs;
     const completed = completedCoursesVal ?? completedCourses;
-    if (!maj) return;
+    if (!m1) return;
+
+    const majorsPayload = [
+      { name: m1.name, reqs: r1 || {} },
+      ...(showMajor2 && major2 ? [{ name: major2.name, reqs: major2Reqs || {} }] : []),
+    ];
+    const minorsPayload = [
+      ...(minor  ? [{ name: minor.name,  reqs: minorReqs  || {} }] : []),
+      ...(showMinor2 && minor2 ? [{ name: minor2.name, reqs: minor2Reqs || {} }] : []),
+    ];
+
     setLoadingRecs(true); setRecsError(""); setRecommendations([]); setBestProfessors({});
     try {
       const resp = await axios.post(`${backendUrl}/api/recommend`, {
-        majorName: maj.name, majorReqs: reqs || {},
-        minorName: minor?.name || null, minorReqs: minorReqs || null,
+        majors: majorsPayload, minors: minorsPayload,
         completedCourses: completed, termId, interests,
-      }, { timeout: 60000 });
+      }, { timeout: 130000 });
       setRecommendations(resp.data.recommendations || []);
       setTermLabel(resp.data.termLabel || "");
     } catch (err) {
@@ -304,8 +356,10 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
 
   const clearSession = () => {
     setCompletedCourses([]);
-    setMajor(null); setMajorQuery(""); setMajorReqs(null);
-    setMinor(null); setMinorQuery(""); setMinorReqs(null);
+    setMajor(null);  setMajorQuery("");  setMajorReqs(null);
+    setMajor2(null); setMajor2Query(""); setMajor2Reqs(null); setShowMajor2(false);
+    setMinor(null);  setMinorQuery("");  setMinorReqs(null);
+    setMinor2(null); setMinor2Query(""); setMinor2Reqs(null); setShowMinor2(false);
     setRecommendations([]); setTermLabel(""); setBestProfessors({});
     localStorage.removeItem(LS_KEY);
   };
@@ -487,6 +541,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
         <div className="planner-section step-divider">
           <p className="section-label"><span className="step-badge">2</span>Your program</p>
           <p className="section-hint">{transcriptEnabled ? "Auto-filled from your transcript. Adjust if needed, or add a minor." : "Search for your major and optional minor below."}</p>
+
+          {/* Row: Major 1 + Minor 1 */}
           <div className="planner-row">
             <div className="field-group planner-field" ref={majorRef}>
               <label>
@@ -531,6 +587,80 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Row: Major 2 + Minor 2 (shown on demand) */}
+          {(showMajor2 || showMinor2) && (
+            <div className="planner-row">
+              <div className="field-group planner-field" ref={major2Ref}>
+                {showMajor2 ? (
+                  <>
+                    <label>
+                      Double Major
+                      <button type="button" className="remove-program-btn" onClick={removeMajor2}>×</button>
+                    </label>
+                    <input
+                      type="text" placeholder="Search major…" value={major2Query}
+                      onChange={(e) => { setMajor2Query(e.target.value); setMajor2DropOpen(true); }}
+                      onFocus={() => setMajor2DropOpen(true)} className="program-input"
+                    />
+                    {major2DropOpen && filteredMajors2.length > 0 && (
+                      <div className="program-dropdown">
+                        {filteredMajors2.map((p) => (
+                          <button key={p.url} type="button" className="program-option" onClick={() => selectMajor2(p)}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {major2 && major2Reqs && (
+                      <p className="req-status">
+                        {loadingReqs ? "Loading…" : `✓ ${countRequired(major2Reqs)} required courses found`}
+                      </p>
+                    )}
+                  </>
+                ) : <div />}
+              </div>
+
+              <div className="field-group planner-field" ref={minor2Ref}>
+                {showMinor2 ? (
+                  <>
+                    <label>
+                      Second Minor
+                      <button type="button" className="remove-program-btn" onClick={removeMinor2}>×</button>
+                    </label>
+                    <input
+                      type="text" placeholder="Search minor…" value={minor2Query}
+                      onChange={(e) => { setMinor2Query(e.target.value); setMinor2DropOpen(true); }}
+                      onFocus={() => setMinor2DropOpen(true)} className="program-input"
+                    />
+                    {minor2DropOpen && filteredMinors2.length > 0 && (
+                      <div className="program-dropdown">
+                        {filteredMinors2.map((p) => (
+                          <button key={p.url} type="button" className="program-option" onClick={() => selectMinor2(p)}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : <div />}
+              </div>
+            </div>
+          )}
+
+          {/* Add buttons */}
+          <div className="add-program-row">
+            {!showMajor2 && major && (
+              <button type="button" className="add-program-btn" onClick={() => setShowMajor2(true)}>
+                + Double major
+              </button>
+            )}
+            {!showMinor2 && (
+              <button type="button" className="add-program-btn" onClick={() => setShowMinor2(true)}>
+                + {minor ? "Second minor" : "Minor"}
+              </button>
+            )}
           </div>
         </div>
 
