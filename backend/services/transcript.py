@@ -13,7 +13,7 @@ _SEM_PAT = re.compile(
     r"^\s*(Fall|Spring|Summer\s+I{1,3}|Summer\s+II|Winter)\s+(\d{4})\s*$", re.I
 )
 _HIST_COURSE = re.compile(
-    r"^\s{4,}([A-Z]{3,4}\d{3}[A-Z]?)\s+.+?\s+([A-Z][+\-]?|W|NC|P|S|F)\s+(\d+\.\d{2})\s+\d+\.\d{2}(.*)"
+    r"^\s+([A-Z]{3,4}\d{3}[A-Z]?)\s+.+?\s+([A-Z][+\-]?|W|NC|P|S|F)\s+(\d+\.\d{2})\s+\d+\.\d{2}(.*)"
 )
 _XFER_EQUIV = re.compile(
     r"\bP\b\s+\d+\.\d{2}\s+([A-Z]{3,4}\d{3}[A-Z]?)(.*)"
