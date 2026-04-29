@@ -14,6 +14,8 @@ const SORT_OPTIONS = [
 export default function App() {
   const [semesters, setSemesters] = useState([]);
   const backendUrl = useMemo(() => import.meta.env.VITE_BACKEND_URL || DEFAULT_BACKEND, []);
+  // Transcript import requires a local browser window — unavailable on the deployed version
+  const transcriptEnabled = !import.meta.env.VITE_BACKEND_URL;
 
   // ── Lookup modal ─────────────────────────────────────────────────────────
   const [modalOpen,   setModalOpen]   = useState(false);
@@ -102,6 +104,7 @@ export default function App() {
         backendUrl={backendUrl}
         semesters={semesters}
         onOpenProfModal={openModal}
+        transcriptEnabled={transcriptEnabled}
       />
 
       {/* ── Course lookup modal ─────────────────────────────────────── */}

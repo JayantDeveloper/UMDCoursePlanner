@@ -16,7 +16,7 @@ from services.external import (
 )
 from services.ai import get_recommendations, scrape_requirements
 from services.programs import fetch_programs
-from services.transcript import scrape_transcript_playwright
+from services.transcript import scrape_transcript_playwright, parse_transcript_text
 
 bp = Blueprint("planner", __name__)
 
@@ -63,6 +63,22 @@ def get_transcript():
         return jsonify({"error": str(exc)}), 408
     except Exception as exc:
         return jsonify({"error": f"Transcript error: {exc}"}), 500
+
+
+@bp.route("/api/parse-transcript", methods=["POST"])
+def parse_transcript():
+    """Parse raw transcript text pasted by the user."""
+    payload = request.get_json(silent=True) or {}
+    text = (payload.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "text is required"}), 400
+    try:
+        result = parse_transcript_text(text)
+        if not result.get("completed") and not result.get("in_progress"):
+            return jsonify({"error": "No courses found — make sure you copied the full transcript page text."}), 422
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"error": f"Parse error: {exc}"}), 500
 
 
 @bp.route("/api/recommend", methods=["POST"])

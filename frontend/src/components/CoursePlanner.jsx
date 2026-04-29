@@ -12,7 +12,7 @@ async function fetchProfessorsForCourse(courseId, termId, backendUrl) {
   return compareResp.data;
 }
 
-export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal }) {
+export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, transcriptEnabled = true }) {
   // Program selection
   const [programs, setPrograms]       = useState([]);
   const [majorQuery, setMajorQuery]   = useState("");
@@ -32,6 +32,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal }
   const [manualInput, setManualInput] = useState("");
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError]     = useState("");
+  const [pasteMode, setPasteMode]   = useState(false);
+  const [pasteText, setPasteText]   = useState("");
 
   // Recommendations
   const [termId, setTermId]               = useState(semesters[0]?.termId || "");
@@ -196,6 +198,35 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal }
     }
   };
 
+  const handlePasteTranscript = async () => {
+    if (!pasteText.trim()) return;
+    setTranscriptLoading(true); setTranscriptError("");
+    let detectedMajor = "", allCourses = [];
+    try {
+      const resp = await axios.post(`${backendUrl}/api/parse-transcript`, { text: pasteText }, { timeout: 30000 });
+      detectedMajor = resp.data.detected_major || "";
+      allCourses = [
+        ...(resp.data.completed || []),
+        ...(resp.data.in_progress || []).map((c) => ({ ...c, inProgress: true })),
+      ];
+      setCompletedCourses(allCourses);
+      setPasteText(""); setPasteMode(false);
+    } catch (err) {
+      setTranscriptError(err?.response?.data?.error || "Could not parse transcript. Make sure you copied the full page.");
+      return;
+    } finally {
+      setTranscriptLoading(false);
+    }
+    if (detectedMajor && programs.length > 0) {
+      const match = findBestMajorMatch(programs, detectedMajor);
+      if (match) {
+        setMajor(match); setMajorQuery(match.name); setMajorReqs(null);
+        const reqs = await fetchRequirements(match, "major");
+        if (reqs) await runRecommendations({ majorVal: match, majorReqsVal: reqs, completedCoursesVal: allCourses });
+      }
+    }
+  };
+
   const applyManualCourses = () => {
     const ids = manualInput
       .split(/[\s,;]+/)
@@ -225,37 +256,106 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal }
   return (
     <section className="planner">
       <div className="planner-form">
-        {/* Step 1 — Transcript */}
+        {/* Step 1 — Transcript / Manual */}
         <div className="planner-section">
           <div className="section-label-row">
-            <p className="section-label"><span className="step-badge">1</span>Import your transcript</p>
+            <p className="section-label">
+              <span className="step-badge">1</span>
+              {transcriptEnabled ? "Import your transcript" : "Your completed courses"}
+            </p>
             {hasSession && (
               <button type="button" className="clear-session-btn" onClick={clearSession}>
                 clear session
               </button>
             )}
           </div>
-          <p className="section-hint">Detects your major automatically and pulls all your completed courses.</p>
-          <button
-            type="button"
-            className={`transcript-btn ${transcriptLoading ? "transcript-btn-waiting" : ""}`}
-            onClick={handleImportTranscript} disabled={transcriptLoading}
-          >
-            {transcriptLoading
-              ? <><span className="transcript-spinner" />Waiting for Testudo login…</>
-              : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Import from Testudo</>}
-          </button>
-          {transcriptLoading && (
-            <div className="transcript-steps">
-              <p className="transcript-steps-title">A browser window just opened —</p>
-              <ol>
-                <li>Log in with your UMD credentials</li>
-                <li>Complete Duo Push if prompted</li>
-                <li>The window closes automatically, then your major and recommendations load</li>
-              </ol>
-            </div>
+
+          {transcriptEnabled ? (
+            /* ── Local: Playwright browser automation ── */
+            <>
+              <p className="section-hint">Detects your major automatically and pulls all your completed courses.</p>
+              <button
+                type="button"
+                className={`transcript-btn ${transcriptLoading ? "transcript-btn-waiting" : ""}`}
+                onClick={handleImportTranscript} disabled={transcriptLoading}
+              >
+                {transcriptLoading
+                  ? <><span className="transcript-spinner" />Waiting for Testudo login…</>
+                  : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Import from Testudo</>}
+              </button>
+              {transcriptLoading && (
+                <div className="transcript-steps">
+                  <p className="transcript-steps-title">A browser window just opened —</p>
+                  <ol>
+                    <li>Log in with your UMD credentials</li>
+                    <li>Complete Duo Push if prompted</li>
+                    <li>The window closes automatically, then your major and recommendations load</li>
+                  </ol>
+                </div>
+              )}
+              {transcriptError && <p className="error">{transcriptError}</p>}
+            </>
+          ) : !pasteMode ? (
+            /* ── Deployed: Testudo button → opens paste flow ── */
+            <>
+              <p className="section-hint">Detects your major automatically and pulls all your completed courses.</p>
+              <button
+                type="button"
+                className="transcript-btn"
+                onClick={() => setPasteMode(true)}
+              >
+                <img src="/testudo-example-color.webp" alt="" className="testudo-icon" />
+                Import from Testudo
+              </button>
+            </>
+          ) : (
+            /* ── Paste mode: copy-paste transcript text ── */
+            <>
+              <div className="transcript-steps" style={{ marginBottom: 12 }}>
+                <p className="transcript-steps-title">3 quick steps to import your transcript:</p>
+                <ol>
+                  <li>
+                    <a href="https://app.testudo.umd.edu/#/main/uotrans" target="_blank" rel="noopener noreferrer"
+                      style={{ color: "#be7c4a", fontWeight: 600 }}>
+                      Open Testudo Unofficial Transcript ↗
+                    </a>
+                    {" "}and log in with Duo
+                  </li>
+                  <li>Press <strong>Ctrl+A</strong> (or Cmd+A) to select all, then <strong>Ctrl+C</strong> to copy</li>
+                  <li>Paste below and click <strong>Parse Transcript</strong></li>
+                </ol>
+              </div>
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="Paste your transcript text here…"
+                rows={6}
+                style={{
+                  width: "100%", borderRadius: 12, border: "1px solid #d1c4b1",
+                  padding: "10px 12px", fontSize: 12, fontFamily: "Space Mono, monospace",
+                  background: "#fffaf4", resize: "vertical", boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="transcript-btn"
+                  onClick={handlePasteTranscript}
+                  disabled={transcriptLoading || !pasteText.trim()}
+                >
+                  {transcriptLoading
+                    ? <><span className="transcript-spinner" />Parsing…</>
+                    : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Parse Transcript</>}
+                </button>
+                <button type="button" className="secondary" style={{ alignSelf: "center" }}
+                  onClick={() => { setPasteMode(false); setPasteText(""); setTranscriptError(""); }}>
+                  Cancel
+                </button>
+              </div>
+              {transcriptError && <p className="error">{transcriptError}</p>}
+            </>
           )}
-          {transcriptError && <p className="error">{transcriptError}</p>}
+
           {completedCourses.length > 0 && (
             <div className="completed-chips">
               {completedCourses.map((c) => (
@@ -275,7 +375,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal }
               </button>
             </div>
           )}
-          {completedCourses.length > 0 && (
+          {transcriptEnabled && completedCourses.length > 0 && (
             <div className="add-courses-row">
               <input
                 type="text" placeholder="Add more course IDs…"
@@ -293,7 +393,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal }
         {/* Step 2 — Major / Minor */}
         <div className="planner-section step-divider">
           <p className="section-label"><span className="step-badge">2</span>Your program</p>
-          <p className="section-hint">Auto-filled from your transcript. Adjust if needed, or add a minor.</p>
+          <p className="section-hint">{transcriptEnabled ? "Auto-filled from your transcript. Adjust if needed, or add a minor." : "Search for your major and optional minor below."}</p>
           <div className="planner-row">
             <div className="field-group planner-field" ref={majorRef}>
               <label>

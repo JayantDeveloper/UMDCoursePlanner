@@ -1236,9 +1236,29 @@ a.mini-prof-name:hover {
 
 @media (max-width: 640px) {
   .app-shell {
-    padding: 28px 16px 56px;
+    padding: 24px 14px 56px;
   }
 
+  /* Hero */
+  .hero-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .hero-left {
+    min-width: 0;
+  }
+
+  .hero-right {
+    width: 100%;
+  }
+
+  .lookup-cta-btn {
+    width: 100%;
+  }
+
+  /* Modal search form */
   .search-fields {
     flex-direction: column;
     align-items: stretch;
@@ -1252,7 +1272,88 @@ a.mini-prof-name:hover {
     width: 100%;
   }
 
+  /* Modal */
+  .modal-overlay {
+    padding: 12px 10px 32px;
+  }
+
+  .modal-panel {
+    padding: 20px 16px 28px;
+    border-radius: 18px;
+  }
+
+  .modal-header h2 {
+    font-size: 16px;
+  }
+
+  /* Professor grid */
   .prof-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Recommendations grid */
+  .recs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Results header */
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Planner */
+  .planner-section {
+    padding: 22px 16px;
+  }
+
+  .planner-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .planner-field {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .planner-field select,
+  .planner-field input,
+  .planner-section select,
+  .planner-section .field-group {
+    width: 100%;
+  }
+
+  .interests-field {
+    width: 100%;
+  }
+
+  .add-courses-row {
+    flex-wrap: wrap;
+  }
+
+  .add-courses-input {
+    max-width: none;
+    width: 100%;
+    flex: none;
+  }
+
+  .add-courses-btn {
+    width: 100%;
+  }
+
+  .transcript-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Sort controls */
+  .sort-controls {
+    gap: 4px;
+  }
+
+  .sort-btn {
+    padding: 5px 10px;
+    font-size: 12px;
   }
 }
