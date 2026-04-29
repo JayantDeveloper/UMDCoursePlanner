@@ -1,0 +1,110 @@
+    	
+                                   UNIVERSITY OF MARYLAND
+                                        COLLEGE PARK
+                                   Office of the Registrar
+                                   College Park, MD 20742
+                                   UNOFFICIAL TRANSCRIPT
+                                FOR ADVISING PURPOSES ONLY 
+                                     As of:  04/29/26
+Maheshwari, Jayant
+E-Mail: jmaheshw@terpmail.umd.edu
+Major: Computer Science-Machine Learning T
+Freshman - First Time                    Undergraduate Degree Seeking
+GenEd Program                            Current Status: Registered Summer II 2026
+
+Fundamental Requirement Satisfied Math: AP; English: AP
+
+Transcripts received from the following institutions:
+
+Advanced Placement Exam                  on 07/02/24
+
+** Transfer Credit Information **                   ** Equivalences **
+
+Advanced Placement Exam
+    2101   COMP SCI PRIN/SCR 4      NC       0.00 No Credit
+           STATISTICS/SCR 5         P        3.00 STAT100       FSAR, FSMA
+    2201   U.S. GVPT/SCR 5          P        3.00 GVPT170       DSHS
+    2301   BIOLOGY/SCR 4            P        3.00 BSCI160       DSNL
+           BIOLOGY/SCR 4            P        1.00 BSCI161
+           BIOLOGY/SCR 4            P        3.00 BSCI170       DSNL
+           BIOLOGY/SCR 4            P        1.00 BSCI171
+           ENG LANG/COMP/SCR 5      P        3.00               FSAW
+           CALCULUS AB/SCR 5        P        0.00 No Credit
+           PHYSICS 1 ALGEBRA/SCR4   P        4.00 PHYS121       DSNL
+    2401   COMP SCI A/SCR 4         P        3.00               L1
+           ENG LIT/COMP/SCR 5       P        3.00 ENGL278
+           ENG LIT/COMP/SCR 5       P        3.00               L1
+           WORLD HISTORY/SCR 5      P        3.00               L1
+           CALC BC/AB SUBSCR 5      P        0.00 No Credit
+           CALCULUS BC/SCR 5        P        4.00 MATH140       FSAR, FSMA
+           CALCULUS BC/SCR 5        P        4.00 MATH141
+           PHYSICS C-ELM/SCR 2      NC       0.00 No Credit
+Acceptable UG Inst. Credits:                41.00
+Applicable UG Inst. Credits:                41.00
+
+Total UG Credits Acceptable:                41.00
+Total UG Credits Applicable:                41.00
+
+Historic Course Information is listed in the order:
+Course, Title, Grade, Credits Attempted, Earned and Quality Points
+
+Fall 2024                               
+MAJOR: COMPUTER SCIENCE          COLLEGE: COMP, MATH, & NAT SCI         
+     BMGT220  PRIN ACCOUNTING I        C+ 3.00  3.00  6.90
+     CMSC132  OBJECT-ORIENTED PROG II  C  4.00  4.00  8.00
+     INAG110  ORAL COMMUNICATION       A  3.00  3.00 12.00 FSOC
+     MATH340  MVCALC,LINALG,DE I HONR  D  4.00  4.00  4.00
+     NEUR200  INTRO TO NEUROSCIENCE    B+ 3.00  3.00  9.90 DSNS
+Semester:       Attempted 17.00; Earned 17.00; QPoints   40.80; GPA 2.400
+UG Cumulative:            17.00;        17.00;           40.80;     2.400
+
+Spring 2025                             
+MAJOR: COMPUTER SCIENCE          COLLEGE: COMP, MATH, & NAT SCI         
+     CMSC216  INTRO TO CMPTR SYSTEMS   B  4.00  4.00 12.00
+     CMSC250  DISCRETE STRUCTURES      A  4.00  4.00 16.00
+     ENES210  ENT OPPORTUNITY ANALYSIS A+ 3.00  3.00 12.00 DSSP, SCIS
+     MATH240  INTRO LINEAR ALGEBRA     B+ 4.00  4.00 13.20
+** Semester Academic Honors **
+Semester:       Attempted 15.00; Earned 15.00; QPoints   53.20; GPA 3.546
+UG Cumulative:            32.00;        32.00;           94.00;     2.937
+
+Fall 2025                               
+MAJOR: COMPUTER SCIENCE          COLLEGE: COMP, MATH, & NAT SCI         
+     CMSC330  ORGNZTN PROGM LANG       A- 3.00  3.00 11.10
+     CMSC351  ALGORITHMS               B  3.00  3.00  9.00
+     ENGL154  RACE AND CHILDREN'S TV   A+ 3.00  3.00 12.00 DSHU, DVUP, SCIS
+     PSYC100  INTRO PSYCHOLOGY         A+ 3.00  3.00 12.00 DSHS or DSNS
+     STAT400  APPLIED PROB & STAT I    A- 3.00  3.00 11.10
+** Semester Academic Honors **
+Semester:       Attempted 15.00; Earned 15.00; QPoints   55.20; GPA 3.680
+UG Cumulative:            47.00;        47.00;          149.20;     3.174
+
+UG Cumulative Credit   :  88.00
+UG Cumulative GPA      :   3.174
+
+** Current Course Information **
+
+Spring 2026    Course   Sec  Credits  Grd/ Drop   Add      Drop    Modified GenEd
+                                      Meth /Add  Date      Date      Date
+               ======== ==== =======  ==== ==== ======== ========  ======== ==================
+               MUSC210  0105    3.00  REG  A    11/23/25           11/23/25 DSHU, DVUP
+               MUSC204  0109    3.00  REG  D    11/23/25 11/23/25  11/23/25 DSHU, DVUP
+               ENES140  0101    3.00  REG  A    11/23/25           11/23/25 DSSP
+               ENGL294  0101    3.00  REG  D    11/23/25 11/23/25  11/23/25 DSHU or DSSP
+               ENGL394  1801    3.00  REG  D    11/23/25 11/23/25  11/23/25 FSPW
+               MATH241  0231    4.00  REG  A    11/16/25           11/16/25
+               CMSC320  0201    3.00  REG  A    11/16/25           11/16/25
+               CMSC421  0201    3.00  REG  D    11/16/25 02/23/26  02/23/26
+               CMSC320  0201    3.00  REG  D    11/16/25 11/16/25  11/16/25
+
+Summer I 2026  Course   Sec  Credits  Grd/ Drop   Add      Drop    Modified GenEd
+                                      Meth /Add  Date      Date      Date
+               ======== ==== =======  ==== ==== ======== ========  ======== ==================
+               MATH423  WB11    3.00  REG  A    03/16/26           03/16/26
+
+Summer II 2026 Course   Sec  Credits  Grd/ Drop   Add      Drop    Modified GenEd
+                                      Meth /Add  Date      Date      Date
+               ======== ==== =======  ==== ==== ======== ========  ======== ==================
+               MATH310  WB21    3.00  REG  A    03/16/26           03/16/26
+
+	

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: umd-course-planner-backend
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn -w 2 -b 0.0.0.0:$PORT app:app
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.0"
