@@ -211,8 +211,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const handleOpenTestudo = () => {
     const popup = window.open(
       "https://app.testudo.umd.edu/#/main/uotrans?null",
-      "testudo_transcript",
-      "width=1100,height=750,scrollbars=yes"
+      "_blank"
     );
     if (!popup || popup.closed) {
       setImportMode("paste");
@@ -376,7 +375,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
           ) : importMode === "waiting" ? (
             /* ── Deployed: popup open, show bookmarklet instructions ── */
             <div className="transcript-steps">
-              <p className="transcript-steps-title">Testudo opened in a new window —</p>
+              <p className="transcript-steps-title">Testudo opened in a new tab —</p>
               <ol>
                 <li>Log in with your UMD credentials + Duo</li>
                 <li>You'll land on your Unofficial Transcript automatically</li>
