@@ -10,12 +10,7 @@ from routes.planner import bp as planner_bp
 load_dotenv()
 
 app = Flask(__name__)
-CORS(
-    app,
-    resources={r"/api/*": {"origins": "*"}},
-    methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Accept"],
-)
+CORS(app, origins="*")
 
 app.register_blueprint(comparison_bp)
 app.register_blueprint(planner_bp)
