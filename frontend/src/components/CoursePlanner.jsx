@@ -67,6 +67,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const [loadingRecs, setLoadingRecs]         = useState(false);
   const [recsError, setRecsError]             = useState("");
   const [termLabel, setTermLabel]             = useState("");
+  const [recsElapsed, setRecsElapsed]         = useState(0);
+  const recsTimerRef                          = useRef(null);
 
   // Best professor per recommendation card
   const [bestProfessors, setBestProfessors] = useState({});
@@ -218,7 +220,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       ...(showMinor2 && minor2 ? [{ name: minor2.name, reqs: minor2Reqs || {} }] : []),
     ];
 
-    setLoadingRecs(true); setRecsError(""); setRecommendations([]); setBestProfessors({});
+    setLoadingRecs(true); setRecsError(""); setRecommendations([]); setBestProfessors({}); setRecsElapsed(0);
+    recsTimerRef.current = setInterval(() => setRecsElapsed((n) => n + 1), 1000);
     try {
       const resp = await axios.post(`${backendUrl}/api/recommend`, {
         majors: majorsPayload, minors: minorsPayload,
@@ -227,8 +230,21 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       setRecommendations(resp.data.recommendations || []);
       setTermLabel(resp.data.termLabel || "");
     } catch (err) {
-      setRecsError(err?.response?.data?.error || "Failed to get recommendations.");
+      if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+        setRecsError("Request timed out — the server is processing many courses. Try again in a moment.");
+      } else if (!err.response) {
+        setRecsError(
+          "No response from server. This usually means the request took too long and was cut off. " +
+          "Wait 30 seconds and try again. If it keeps failing, try with fewer courses or a different semester."
+        );
+      } else if (err.response.status >= 500) {
+        const detail = err.response.data?.error || err.response.data?.message || "";
+        setRecsError(`Server error (${err.response.status})${detail ? `: ${detail}` : ". Please try again."}`);
+      } else {
+        setRecsError(err.response.data?.error || `Unexpected error (${err.response.status}). Please try again.`);
+      }
     } finally {
+      clearInterval(recsTimerRef.current);
       setLoadingRecs(false);
     }
   };
@@ -702,9 +718,14 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               onClick={() => runRecommendations()}
               disabled={!canRecommend || loadingRecs}
             >
-              {loadingRecs ? "Generating…" : "Get Recommendations →"}
+              {loadingRecs ? `Generating… ${recsElapsed}s` : "Get Recommendations →"}
             </button>
           </div>
+          {loadingRecs && recsElapsed >= 15 && (
+            <p className="section-hint" style={{ marginTop: 8 }}>
+              Still working… querying course data and AI ({recsElapsed}s). This can take up to 2 minutes.
+            </p>
+          )}
           {recsError && <p className="error">{recsError}</p>}
         </div>
       </div>
