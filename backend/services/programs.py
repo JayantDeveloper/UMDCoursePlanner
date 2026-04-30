@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -19,6 +20,21 @@ _DEGREE_SUFFIX = re.compile(
 )
 _ROLE_SUFFIX = re.compile(r'\s+(Major|Minor)\s*$', re.I)
 
+# Map URL slug → human-readable school name
+_SCHOOL_NAMES: Dict[str, str] = {
+    "agriculture-natural-resources": "Agriculture & Natural Resources",
+    "arts-humanities": "Arts & Humanities",
+    "behavioral-social-sciences": "Behavioral & Social Sciences",
+    "business": "Smith School of Business",
+    "computer-mathematical-natural-sciences": "Computer, Math & Natural Sciences",
+    "education": "Education",
+    "engineering": "Engineering",
+    "journalism": "Journalism",
+    "public-policy": "School of Public Policy",
+    "school-architecture-planning-preservation": "Architecture, Planning & Preservation",
+    "school-public-health": "Public Health",
+}
+
 
 def _headers() -> Dict[str, str]:
     return {"User-Agent": USER_AGENT, "Accept": "application/json"}
@@ -27,6 +43,31 @@ def _headers() -> Dict[str, str]:
 def _normalize_program_name(raw: str) -> str:
     name = _DEGREE_SUFFIX.sub("", raw).strip()
     return _ROLE_SUFFIX.sub("", name).strip()
+
+
+def _school_from_url(url: str) -> str:
+    """Extract human-readable school name from catalog URL."""
+    path = urlparse(url).path
+    # Path looks like /undergraduate/colleges-schools/<school>/<dept>/<program>/
+    parts = [p for p in path.split("/") if p]
+    try:
+        idx = parts.index("colleges-schools")
+        slug = parts[idx + 1]
+        return _SCHOOL_NAMES.get(slug, slug.replace("-", " ").title())
+    except (ValueError, IndexError):
+        return ""
+
+
+def _is_school_level_url(url: str) -> bool:
+    """Return True if the URL points to a school/college overview, not an actual program."""
+    path = urlparse(url).path
+    parts = [p for p in path.split("/") if p]
+    try:
+        idx = parts.index("colleges-schools")
+        # Only one segment after colleges-schools → school overview, not a program
+        return len(parts) - idx - 1 <= 1
+    except ValueError:
+        return False
 
 
 def fetch_programs() -> List[dict]:
@@ -58,14 +99,20 @@ def fetch_programs() -> List[dict]:
             continue
         seen_urls.add(full_url)
 
+        # Skip school/college overview pages — they're not programs
+        if _is_school_level_url(full_url):
+            continue
+
         ptype = "minor" if "minor" in href.lower() else "major"
         name = _normalize_program_name(raw_name)
         if not name:
             continue
 
+        school = _school_from_url(full_url)
+
         key = (name.lower(), ptype)
         if key not in by_key:
-            by_key[key] = {"name": name, "url": full_url, "type": ptype}
+            by_key[key] = {"name": name, "url": full_url, "type": ptype, "school": school}
         else:
             cur_url = by_key[key]["url"]
             if ("major" in full_url or "minor" in full_url) and ("major" not in cur_url and "minor" not in cur_url):

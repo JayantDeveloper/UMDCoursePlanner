@@ -680,11 +680,26 @@ button:disabled {
   background: transparent;
   color: #1f1a1f;
   text-align: left;
-  padding: 9px 12px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.program-option-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f1a1f;
+}
+
+.program-option-school {
+  font-size: 11px;
+  font-weight: 400;
+  color: #8b7355;
 }
 
 .program-option:hover {

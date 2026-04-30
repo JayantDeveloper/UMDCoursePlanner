@@ -132,17 +132,21 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   }, []);
 
   // ── Filtered dropdown lists ───────────────────────────────────────────────
+  const matchesQuery = (p, q) => {
+    const lq = q.toLowerCase();
+    return p.name.toLowerCase().includes(lq) || (p.school || "").toLowerCase().includes(lq);
+  };
   const filteredMajors = programs
-    .filter((p) => p.type === "major" && p.name.toLowerCase().includes(majorQuery.toLowerCase()))
+    .filter((p) => p.type === "major" && matchesQuery(p, majorQuery))
     .slice(0, 12);
   const filteredMajors2 = programs
-    .filter((p) => p.type === "major" && p.name.toLowerCase().includes(major2Query.toLowerCase()))
+    .filter((p) => p.type === "major" && matchesQuery(p, major2Query))
     .slice(0, 12);
   const filteredMinors = programs
-    .filter((p) => p.type === "minor" && p.name.toLowerCase().includes(minorQuery.toLowerCase()))
+    .filter((p) => p.type === "minor" && matchesQuery(p, minorQuery))
     .slice(0, 12);
   const filteredMinors2 = programs
-    .filter((p) => p.type === "minor" && p.name.toLowerCase().includes(minor2Query.toLowerCase()))
+    .filter((p) => p.type === "minor" && matchesQuery(p, minor2Query))
     .slice(0, 12);
 
   // ── Requirements ─────────────────────────────────────────────────────────
@@ -536,7 +540,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 <div className="program-dropdown">
                   {filteredMajors.map((p) => (
                     <button key={p.url} type="button" className="program-option" onClick={() => selectMajor(p)}>
-                      {p.name}
+                      <span className="program-option-name">{p.name}</span>
+                      {p.school && <span className="program-option-school">{p.school}</span>}
                     </button>
                   ))}
                 </div>
@@ -559,7 +564,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 <div className="program-dropdown">
                   {filteredMinors.map((p) => (
                     <button key={p.url} type="button" className="program-option" onClick={() => selectMinor(p)}>
-                      {p.name}
+                      <span className="program-option-name">{p.name}</span>
+                      {p.school && <span className="program-option-school">{p.school}</span>}
                     </button>
                   ))}
                 </div>
@@ -586,7 +592,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                       <div className="program-dropdown">
                         {filteredMajors2.map((p) => (
                           <button key={p.url} type="button" className="program-option" onClick={() => selectMajor2(p)}>
-                            {p.name}
+                            <span className="program-option-name">{p.name}</span>
+                            {p.school && <span className="program-option-school">{p.school}</span>}
                           </button>
                         ))}
                       </div>
@@ -616,7 +623,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                       <div className="program-dropdown">
                         {filteredMinors2.map((p) => (
                           <button key={p.url} type="button" className="program-option" onClick={() => selectMinor2(p)}>
-                            {p.name}
+                            <span className="program-option-name">{p.name}</span>
+                            {p.school && <span className="program-option-school">{p.school}</span>}
                           </button>
                         ))}
                       </div>
