@@ -195,12 +195,12 @@ button:disabled {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 4px;
 }
 
 .results-title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
 }
 
@@ -213,8 +213,13 @@ button:disabled {
 
 .count {
   margin: 0;
-  font-size: 14px;
-  color: #6d584d;
+  font-size: 12px;
+  font-weight: 700;
+  color: #7a5c3a;
+  background: #f0e4d0;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
 }
 
 /* ── Sort controls ── */
@@ -1022,34 +1027,43 @@ button:disabled {
 .recs-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  margin-top: 48px;
 }
 
 .recs-section h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+
+.recs-section .results-header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid #ddd4c4;
+  margin-bottom: 4px;
 }
 
 .recs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
 }
 
 .rec-card {
   background: #ffffff;
-  border-radius: 16px;
-  padding: 18px;
-  box-shadow: 0 6px 16px rgba(48, 32, 24, 0.08);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 2px 6px rgba(48, 32, 24, 0.06), 0 8px 20px rgba(48, 32, 24, 0.09);
   display: flex;
   flex-direction: column;
   gap: 8px;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+  border: 1px solid rgba(210, 190, 165, 0.35);
 }
 
 .rec-card:hover {
-  box-shadow: 0 12px 24px rgba(48, 32, 24, 0.13);
-  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(48, 32, 24, 0.08), 0 16px 32px rgba(48, 32, 24, 0.14);
+  transform: translateY(-3px);
 }
 
 .rec-card.completed {
@@ -1368,6 +1382,10 @@ a.mini-prof-name:hover {
   /* Recommendations grid */
   .recs-grid {
     grid-template-columns: 1fr;
+  }
+
+  .recs-section {
+    margin-top: 32px;
   }
 
   /* Results header */
