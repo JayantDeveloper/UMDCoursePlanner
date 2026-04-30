@@ -15,3 +15,4 @@ backend/.env.*
 ## General
 .DS_Store
 *.log
+.vercel
