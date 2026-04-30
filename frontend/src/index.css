@@ -1024,6 +1024,25 @@ button:disabled {
   color: #fff;
 }
 
+.chip-remove {
+  background: none;
+  border: none;
+  padding: 0 0 0 3px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1;
+  color: #aaa;
+  cursor: pointer;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+.chip-remove:hover {
+  color: #FA5C5C;
+  transform: none;
+  box-shadow: none;
+}
+
 .chip-clear {
   background: transparent;
   color: #FA5C5C;

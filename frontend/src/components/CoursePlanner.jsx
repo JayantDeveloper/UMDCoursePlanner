@@ -633,10 +633,16 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                   {c.inProgress
                     ? <span className="chip-grade chip-wip">now</span>
                     : c.grade && <span className="chip-grade">{c.grade}</span>}
+                  <button
+                    type="button"
+                    className="chip-remove"
+                    aria-label={`Remove ${c.course_id}`}
+                    onClick={() => setCompletedCourses(completedCourses.filter((x) => x.course_id !== c.course_id))}
+                  >×</button>
                 </span>
               ))}
               <button type="button" className="chip-clear" onClick={() => setCompletedCourses([])}>
-                clear
+                clear all
               </button>
             </div>
           )}
