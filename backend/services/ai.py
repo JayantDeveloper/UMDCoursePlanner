@@ -1,9 +1,11 @@
 """Ollama AI wrapper, feedback generation, requirements scraping, and recommendations."""
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import re
+import time
 from typing import Any, Dict, List
 
 import requests
@@ -63,22 +65,31 @@ def _chat(prompt: str, max_tokens: int = 2048, temperature: float = 0.4) -> str:
         raise ValueError(
             "GROQ_API_KEY is not set. Add it to your .env file (backend/.env)."
         )
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": GROQ_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-        },
-        timeout=60,
-    )
-    resp.raise_for_status()
-    return (resp.json()["choices"][0]["message"]["content"] or "").strip()
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    for attempt in range(2):
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60,
+        )
+        if resp.status_code == 429 and attempt == 0:
+            wait = min(int(resp.headers.get("retry-after", 30)), 60)
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return (resp.json()["choices"][0]["message"]["content"] or "").strip()
+    resp.raise_for_status()  # re-raise after second 429
+    return ""
 
 
 def strip_markdown_fences(text: str) -> str:
@@ -255,6 +266,21 @@ def _build_recommend_prompt(
     )
 
 
+def _rec_cache_key(majors, minors, completed_courses, term_id, interests) -> str:
+    major_names = sorted(m.get("name", "") for m in majors)
+    minor_names = sorted(m.get("name", "") for m in minors)
+    completed_ids = sorted(
+        (c if isinstance(c, str) else c.get("course_id", ""))
+        for c in (completed_courses or []) if c
+    )
+    raw = json.dumps([major_names, minor_names, completed_ids, term_id, (interests or "").strip()], sort_keys=True)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+from services.cache import _get, _store
+from time import monotonic as _monotonic
+
+
 def get_recommendations(
     majors: List[dict],
     minors: List[dict],
@@ -262,6 +288,11 @@ def get_recommendations(
     term_id: str,
     interests: str,
 ) -> dict:
+    cache_key = ("get_recommendations", _rec_cache_key(majors, minors, completed_courses, term_id, interests))
+    hit, cached_result = _get(cache_key)
+    if hit:
+        return cached_result
+
     sem_map = {"01": "Spring", "05": "Summer", "08": "Fall", "12": "Winter"}
     sem_label = f"{sem_map.get(term_id[-2:], '')} {term_id[:4]}"
 
@@ -357,4 +388,6 @@ def get_recommendations(
             tags.append("Check Prereqs")
         rec["tags"] = tags
 
-    return {"recommendations": recommendations, "termLabel": sem_label}
+    result = {"recommendations": recommendations, "termLabel": sem_label}
+    _store[cache_key] = (result, _monotonic() + 3_600)  # cache AI result for 1 hour
+    return result
