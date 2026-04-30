@@ -156,21 +156,23 @@ def scrape_transcript_playwright() -> dict:
         context = browser.new_context(viewport={"width": W, "height": H})
         page = context.new_page()
 
-        # Navigate to the base Testudo URL — CAS intercepts unauthenticated requests
-        page.goto(f"{TESTUDO_BASE}/main/uotrans")
+        # Testudo uses Angular hash routing — CAS only sees the base URL, never
+        # the #/main/... fragment. After login, CAS always redirects to the base
+        # URL and Angular defaults to #/main/schedule. We navigate to the
+        # transcript only after Angular has finished loading post-login.
+        page.goto(f"{TESTUDO_BASE}/#/main/uotrans")
         print("[UMD Course Planner] Browser opened — please log in to Testudo (Duo Push if required)…")
 
         try:
-            # Wait until CAS login completes: user is back on app.testudo.umd.edu
-            # and NOT on an intermediate CAS/shib page
+            # Wait until Angular has loaded post-login: we're on app.testudo.umd.edu
+            # and the hash has been set to a #/main/ route (proves authenticated + Angular ready)
             page.wait_for_function(
                 "() => window.location.hostname === 'app.testudo.umd.edu' "
-                "&& window.location.pathname !== '/' "
-                "&& document.readyState === 'complete'",
+                "&& window.location.hash.startsWith('#/main/')",
                 timeout=180_000,
             )
-            # CAS redirects to the schedule page after login — explicitly navigate to transcript
-            page.goto(f"{TESTUDO_BASE}/main/uotrans")
+            # Now authenticated — navigate directly to the transcript tab
+            page.goto(f"{TESTUDO_BASE}/#/main/uotrans")
             page.wait_for_function(
                 "() => document.body.innerText.includes('UNOFFICIAL TRANSCRIPT') "
                 "|| document.body.innerText.includes('Historic Course Information') "

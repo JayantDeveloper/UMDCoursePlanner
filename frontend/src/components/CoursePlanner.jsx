@@ -3,7 +3,7 @@ import axios from "axios";
 import { RecommendCard } from "./RecommendCard";
 
 const LS_KEY = "umd_course_planner";
-const TESTUDO_URL = "https://app.testudo.umd.edu/main/uotrans";
+const TESTUDO_URL = "https://app.testudo.umd.edu/#/main/uotrans";
 
 function countRequired(reqs) {
   return (reqs.sections || [])
