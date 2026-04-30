@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import CoursePlanner from "./components/CoursePlanner";
-import { getProfScore, sortProfs, GRADE_COLORS } from "./utils";
+import { getProfScore, sortProfs, GRADE_COLORS, scoreColor } from "./utils";
 
 const DEFAULT_BACKEND = "http://127.0.0.1:5001";
 
@@ -224,7 +224,11 @@ function ProfCard({ prof, courseId, backendUrl, score }) {
         <h3 className="prof-name">{prof.name}</h3>
         <div className="prof-card-meta">
           {score != null && (
-            <span className="score-badge" title="Score: 60% rating + 40% GPA, 0–100">
+            <span
+              className="score-badge"
+              title="Score: 60% rating + 40% GPA, 0–100"
+              style={{ background: scoreColor(score) }}
+            >
               {score}
             </span>
           )}

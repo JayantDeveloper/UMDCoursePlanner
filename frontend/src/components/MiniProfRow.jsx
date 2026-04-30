@@ -1,4 +1,4 @@
-import { getProfScore, GRADE_COLORS } from "../utils";
+import { getProfScore, GRADE_COLORS, scoreColor } from "../utils";
 
 export function MiniProfRow({ prof }) {
   const score = getProfScore(prof);
@@ -9,7 +9,13 @@ export function MiniProfRow({ prof }) {
     <div className="mini-prof-row">
       <div className="mini-prof-identity">
         {score != null && (
-          <span className="rec-prof-score" title="Score">{score}</span>
+          <span
+            className="rec-prof-score"
+            title="Score: 60% rating + 40% GPA, 0–100"
+            style={{ background: scoreColor(score) }}
+          >
+            {score}
+          </span>
         )}
         {prof.slug ? (
           <a

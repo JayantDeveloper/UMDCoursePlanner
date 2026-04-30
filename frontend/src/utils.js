@@ -1,6 +1,13 @@
 export const GRADE_COLORS = { A: "#4ade80", B: "#60a5fa", C: "#fbbf24", D: "#f97316", F: "#f87171" };
 export const PRIORITY_COLORS = { High: "#4ade80", Medium: "#fbbf24", default: "#94a3b8" };
 
+// Returns a background color for a 0–100 score: red (0) → amber (50) → green (100)
+export function scoreColor(score) {
+  if (score == null) return "#1f1a1f";
+  const hue = Math.round((score / 100) * 120); // 0=red, 60=amber, 120=green
+  return `hsl(${hue}, 72%, 40%)`;
+}
+
 export function getProfScore(prof) {
   const r = prof.avgRating != null ? prof.avgRating / 5 : null;
   const g = prof.grades?.avgGpa != null ? prof.grades.avgGpa / 4 : null;

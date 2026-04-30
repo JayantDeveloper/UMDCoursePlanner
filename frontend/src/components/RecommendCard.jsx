@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { getProfScore, PRIORITY_COLORS } from "../utils";
+import { getProfScore, PRIORITY_COLORS, scoreColor } from "../utils";
 import { MiniProfRow } from "./MiniProfRow";
 
 async function fetchProfessorsForCourse(courseId, termId, backendUrl) {
@@ -99,7 +99,13 @@ export function RecommendCard({ rec, isCompleted, bestProf, backendUrl, termId, 
                 )}
                 <div className="rec-prof-stats">
                   {bestProf.score != null && (
-                    <span className="rec-prof-score" title="Score">{bestProf.score}</span>
+                    <span
+                      className="rec-prof-score"
+                      title="Score: 60% rating + 40% GPA, 0–100"
+                      style={{ background: scoreColor(bestProf.score) }}
+                    >
+                      {bestProf.score}
+                    </span>
                   )}
                   {bestProf.avgRating != null && (
                     <span className="rec-prof-rating">★ {bestProf.avgRating.toFixed(1)}</span>
