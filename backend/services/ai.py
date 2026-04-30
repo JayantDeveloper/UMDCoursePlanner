@@ -22,20 +22,36 @@ from services.prereqs import prereq_status
 
 @cached(ttl=14_400)
 def _fetch_dept_courses(dept: str, term_id: str) -> list:
+    results, page = [], 1
     try:
-        data = umdio_get("/courses", {"dept_id": dept, "semester": term_id, "per_page": "50"})
-        return data if isinstance(data, list) else []
+        while True:
+            data = umdio_get("/courses", {"dept_id": dept, "semester": term_id, "per_page": "100", "page": str(page)})
+            if not isinstance(data, list) or not data:
+                break
+            results.extend(data)
+            if len(data) < 100:
+                break
+            page += 1
     except Exception:
-        return []
+        pass
+    return results
 
 
 @cached(ttl=14_400)
 def _fetch_gened_courses(cat: str, term_id: str) -> list:
+    results, page = [], 1
     try:
-        data = umdio_get("/courses", {"gen_ed": cat, "semester": term_id, "per_page": "30"})
-        return data if isinstance(data, list) else []
+        while True:
+            data = umdio_get("/courses", {"gen_ed": cat, "semester": term_id, "per_page": "100", "page": str(page)})
+            if not isinstance(data, list) or not data:
+                break
+            results.extend(data)
+            if len(data) < 100:
+                break
+            page += 1
     except Exception:
-        return []
+        pass
+    return results
 
 
 def _headers() -> Dict[str, str]:
@@ -269,7 +285,7 @@ def get_recommendations(
     available: List[dict] = []
     existing_ids: set = set()
 
-    for dept in dept_ids[:8]:
+    for dept in dept_ids:
         for c in _fetch_dept_courses(dept, term_id):
             cid = c.get("course_id", "")
             if cid and cid not in existing_ids:
