@@ -890,6 +890,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               </button>
             ))}
           </div>
+          <div className="priority-legend">
+            <span className="priority-legend-item"><span className="legend-dot" style={{ background: "#4ade80" }} />High priority</span>
+            <span className="priority-legend-item"><span className="legend-dot" style={{ background: "#fbbf24" }} />Medium priority</span>
+            <span className="priority-legend-item"><span className="legend-dot" style={{ background: "#94a3b8" }} />Lower priority</span>
+          </div>
           <div className="recs-grid">
             {filteredRecs.map((rec) => (
               <RecommendCard

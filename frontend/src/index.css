@@ -426,6 +426,23 @@ button:disabled {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  display: inline-block;
+}
+
+.priority-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 4px 0 10px;
+}
+
+.priority-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #5C3535;
+  font-weight: 500;
 }
 
 /* ── Reviews ── */
