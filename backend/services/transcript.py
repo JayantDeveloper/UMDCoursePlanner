@@ -43,6 +43,13 @@ def parse_transcript_text(text: str) -> dict:
         detected_major = re.sub(r'\s*-[^-]+\s+T\s*$', '', raw).strip()
         detected_major = re.sub(r'\s+T\s*$', '', detected_major).strip()
 
+    detected_minor = ""
+    m_min = re.search(r'\bMinor:\s+(.+)$', text, re.MULTILINE)
+    if m_min:
+        raw = m_min.group(1).strip()
+        detected_minor = re.sub(r'\s*-[^-]+\s+T\s*$', '', raw).strip()
+        detected_minor = re.sub(r'\s+T\s*$', '', detected_minor).strip()
+
     completed: List[dict] = []
     in_progress_txns: dict = {}
     satisfied_geneds: set = set()
@@ -140,6 +147,7 @@ def parse_transcript_text(text: str) -> dict:
         "in_progress": in_progress,
         "satisfied_geneds": sorted(satisfied_geneds),
         "detected_major": detected_major,
+        "detected_minor": detected_minor,
     }
 
 

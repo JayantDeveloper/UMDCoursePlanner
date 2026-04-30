@@ -26,6 +26,22 @@ function findBestMajorMatch(programs, detectedMajor) {
   );
 }
 
+function findBestMinorMatch(programs, detectedMinor) {
+  if (!detectedMinor) return null;
+  const base = detectedMinor
+    .replace(/\s*minor\s*$/i, "")
+    .replace(/\s*\([^)]+\)\s*$/, "")
+    .trim().toLowerCase();
+  const minors = programs.filter((p) => p.type === "minor");
+  return (
+    minors.find((p) => p.name.toLowerCase() === detectedMinor.toLowerCase()) ||
+    minors.find((p) => p.name.toLowerCase().replace(/\s*minor\s*$/i, "") === base) ||
+    minors.find((p) => p.name.toLowerCase().includes(base)) ||
+    minors.find((p) => base.includes(p.name.toLowerCase().replace(/\s*minor\s*$/i, ""))) ||
+    null
+  );
+}
+
 export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, transcriptEnabled = true }) {
   // Program selection
   const [programs, setPrograms]             = useState([]);
@@ -39,6 +55,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const [minorQuery, setMinorQuery]         = useState("");
   const [minor, setMinor]                   = useState(null);
   const [minorDropOpen, setMinorDropOpen]   = useState(false);
+  const [minorAutoDetected, setMinorAutoDetected] = useState(false);
   const [minor2Query, setMinor2Query]       = useState("");
   const [minor2, setMinor2]                 = useState(null);
   const [minor2DropOpen, setMinor2DropOpen] = useState(false);
@@ -193,6 +210,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const selectMinor = (prog) => {
     setMinor(prog); setMinorQuery(prog.name);
     setMinorDropOpen(false); setMinorReqs(null);
+    setMinorAutoDetected(false);
     fetchRequirements(prog, "minor");
   };
   const selectMinor2 = (prog) => {
@@ -200,6 +218,10 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     setMinor2DropOpen(false); setMinor2Reqs(null);
     fetchRequirements(prog, "minor2");
   };
+  const removeMinor = () => {
+    setMinor(null); setMinorQuery(""); setMinorReqs(null); setMinorAutoDetected(false);
+  };
+
   const removeMinor2 = () => {
     setShowMinor2(false); setMinor2(null); setMinor2Query(""); setMinor2Reqs(null);
   };
@@ -251,10 +273,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
 
   const parseAndApplyTranscript = async (text) => {
     setTranscriptLoading(true); setTranscriptError("");
-    let detectedMajor = "", allCourses = [];
+    let detectedMajor = "", detectedMinor = "", allCourses = [];
     try {
       const resp = await axios.post(`${backendUrl}/api/parse-transcript`, { text }, { timeout: 30000 });
       detectedMajor = resp.data.detected_major || "";
+      detectedMinor = resp.data.detected_minor || "";
       allCourses = [
         ...(resp.data.completed || []),
         ...(resp.data.in_progress || []).map((c) => ({ ...c, inProgress: true })),
@@ -267,6 +290,14 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       return;
     } finally {
       setTranscriptLoading(false);
+    }
+    if (detectedMinor && programs.length > 0) {
+      const minorMatch = findBestMinorMatch(programs, detectedMinor);
+      if (minorMatch) {
+        setMinor(minorMatch); setMinorQuery(minorMatch.name); setMinorReqs(null);
+        setMinorAutoDetected(true);
+        fetchRequirements(minorMatch, "minor");
+      }
     }
     if (detectedMajor && programs.length > 0) {
       const match = findBestMajorMatch(programs, detectedMajor);
@@ -334,10 +365,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   // ── Transcript import — Playwright path (local only) ─────────────────────
   const handleImportTranscript = async () => {
     setTranscriptLoading(true); setTranscriptError("");
-    let detectedMajor = "", allCourses = [];
+    let detectedMajor = "", detectedMinor = "", allCourses = [];
     try {
       const resp = await axios.post(`${backendUrl}/api/transcript`, {}, { timeout: 200000 });
       detectedMajor = resp.data.detected_major || "";
+      detectedMinor = resp.data.detected_minor || "";
       allCourses = [
         ...(resp.data.completed || []),
         ...(resp.data.in_progress || []).map((c) => ({ ...c, inProgress: true })),
@@ -351,6 +383,14 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       setTranscriptLoading(false);
     }
 
+    if (detectedMinor && programs.length > 0) {
+      const minorMatch = findBestMinorMatch(programs, detectedMinor);
+      if (minorMatch) {
+        setMinor(minorMatch); setMinorQuery(minorMatch.name); setMinorReqs(null);
+        setMinorAutoDetected(true);
+        fetchRequirements(minorMatch, "minor");
+      }
+    }
     if (detectedMajor && programs.length > 0) {
       const match = findBestMajorMatch(programs, detectedMajor);
       if (match) {
@@ -379,7 +419,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     setCompletedCourses([]);
     setMajor(null);  setMajorQuery("");  setMajorReqs(null);
     setMajor2(null); setMajor2Query(""); setMajor2Reqs(null); setShowMajor2(false);
-    setMinor(null);  setMinorQuery("");  setMinorReqs(null);
+    setMinor(null);  setMinorQuery("");  setMinorReqs(null);  setMinorAutoDetected(false);
     setMinor2(null); setMinor2Query(""); setMinor2Reqs(null); setShowMinor2(false);
     setRecommendations([]); setTermLabel(""); setBestProfessors({});
     localStorage.removeItem(LS_KEY);
@@ -598,7 +638,10 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
             </div>
 
             <div className="field-group planner-field" ref={minorRef}>
-              <label>Minor <span className="optional">(optional)</span></label>
+              <label>
+                Minor <span className="optional">(optional)</span>
+                {minor && minorAutoDetected && <span className="field-auto-tag">auto-detected</span>}
+              </label>
               <input
                 type="text" placeholder="Search minor…" value={minorQuery}
                 onChange={(e) => { setMinorQuery(e.target.value); setMinorDropOpen(true); }}
