@@ -19,6 +19,8 @@ _DEGREE_SUFFIX = re.compile(
     r',?\s*(B\.?S\.?|B\.?A\.?|B\.?E\.?|B\.?F\.?A\.?|B\.?Mus\.?)\s*\.?\s*$', re.I
 )
 _ROLE_SUFFIX = re.compile(r'\s+(Major|Minor)\s*$', re.I)
+_MAJOR_WORD = re.compile(r'\bMajor\b', re.I)
+_MINOR_WORD = re.compile(r'\bMinor\b', re.I)
 
 # Map URL slug → human-readable school name
 _SCHOOL_NAMES: Dict[str, str] = {
@@ -46,9 +48,7 @@ def _normalize_program_name(raw: str) -> str:
 
 
 def _school_from_url(url: str) -> str:
-    """Extract human-readable school name from catalog URL."""
     path = urlparse(url).path
-    # Path looks like /undergraduate/colleges-schools/<school>/<dept>/<program>/
     parts = [p for p in path.split("/") if p]
     try:
         idx = parts.index("colleges-schools")
@@ -58,16 +58,36 @@ def _school_from_url(url: str) -> str:
         return ""
 
 
-def _is_school_level_url(url: str) -> bool:
-    """Return True if the URL points to a school/college overview, not an actual program."""
-    path = urlparse(url).path
-    parts = [p for p in path.split("/") if p]
-    try:
-        idx = parts.index("colleges-schools")
-        # Only one segment after colleges-schools → school overview, not a program
-        return len(parts) - idx - 1 <= 1
-    except ValueError:
-        return False
+def _classify(raw_name: str, url: str) -> Optional[str]:
+    """
+    Return 'major', 'minor', or None (meaning: skip this entry).
+
+    Rules:
+    - Skip anything with 'certificate' in URL or name — those aren't majors/minors.
+    - Determine type from URL first (most reliable), then fall back to raw link text.
+    - If neither URL nor name indicates major/minor, it's a department/school page → skip.
+    """
+    url_l = url.lower()
+    name_l = raw_name.lower()
+
+    # Certificates are not majors or minors
+    if "certificate" in url_l or name_l.endswith("certificate"):
+        return None
+
+    # URL-based classification (most reliable)
+    if "minor" in url_l:
+        return "minor"
+    if "major" in url_l:
+        return "major"
+
+    # Fall back to explicit word in link text (e.g. Shady Grove programs)
+    if _MINOR_WORD.search(raw_name):
+        return "minor"
+    if _MAJOR_WORD.search(raw_name):
+        return "major"
+
+    # No signal → department/school overview page, skip
+    return None
 
 
 def fetch_programs() -> List[dict]:
@@ -99,11 +119,10 @@ def fetch_programs() -> List[dict]:
             continue
         seen_urls.add(full_url)
 
-        # Skip school/college overview pages — they're not programs
-        if _is_school_level_url(full_url):
+        ptype = _classify(raw_name, full_url)
+        if ptype is None:
             continue
 
-        ptype = "minor" if "minor" in href.lower() else "major"
         name = _normalize_program_name(raw_name)
         if not name:
             continue
@@ -114,8 +133,10 @@ def fetch_programs() -> List[dict]:
         if key not in by_key:
             by_key[key] = {"name": name, "url": full_url, "type": ptype, "school": school}
         else:
+            # Prefer the URL that explicitly contains major/minor in the path
             cur_url = by_key[key]["url"]
-            if ("major" in full_url or "minor" in full_url) and ("major" not in cur_url and "minor" not in cur_url):
+            if ("major" in full_url or "minor" in full_url) and \
+               ("major" not in cur_url and "minor" not in cur_url):
                 by_key[key]["url"] = full_url
 
     _programs_cache = list(by_key.values())
