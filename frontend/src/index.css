@@ -1320,6 +1320,221 @@ a.mini-prof-name:hover {
   align-self: flex-start;
 }
 
+/* ── Filter pills ── */
+
+.filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  background: #f1e7d7;
+  color: #4b382d;
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  box-shadow: none;
+}
+
+.filter-pill:hover {
+  background: #e8d9c3;
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+.filter-pill-active {
+  background: #1f1a1f;
+  color: #fff7ec;
+  border-color: #1f1a1f;
+}
+
+.filter-pill-active:hover {
+  transform: none;
+}
+
+.filter-empty {
+  text-align: center;
+  color: #8a6f60;
+  font-size: 14px;
+  padding: 32px 0;
+}
+
+/* ── Credit counter ── */
+
+.credit-total {
+  font-size: 12px;
+  font-weight: 700;
+  color: #3a7a2e;
+  background: #dcfce7;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.credit-total.credit-over {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+/* ── Requirements progress ── */
+
+.req-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.req-progress-bar {
+  flex: 1;
+  height: 5px;
+  background: #e8d9c4;
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.req-progress-fill {
+  height: 100%;
+  background: #6d9e6d;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.req-progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6d584d;
+  white-space: nowrap;
+}
+
+/* ── Skeleton loading ── */
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ede4d8 25%, #f6f0e8 50%, #ede4d8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+.skeleton-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px;
+  border: 1px solid rgba(210, 190, 165, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-id   { height: 16px; width: 80px; }
+.skeleton-name { height: 14px; width: 75%; }
+.skeleton-tags { display: flex; gap: 6px; }
+.skeleton-tag  { height: 20px; width: 90px; border-radius: 20px; }
+.skeleton-line { height: 12px; width: 100%; }
+.skeleton-short { width: 60%; }
+.skeleton-btn  { height: 30px; width: 130px; margin-top: 4px; border-radius: 8px; }
+
+.recs-skeleton-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #ddd4c4;
+}
+
+.recs-skeleton-title {
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: #1f1a1f;
+}
+
+.recs-skeleton-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #7a5c4e;
+}
+
+/* ── Toast ── */
+
+@keyframes toast-in {
+  from { transform: translateX(-50%) translateY(14px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f1a1f;
+  color: #fff7ec;
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  z-index: 500;
+  cursor: pointer;
+  animation: toast-in 0.25s ease forwards;
+  white-space: nowrap;
+  max-width: calc(100vw - 48px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Error card with retry ── */
+
+.error-card {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #ffe0d7;
+  color: #7a2d1d;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.error-card p {
+  margin: 0;
+  font-size: 14px;
+  flex: 1;
+}
+
+.retry-btn {
+  background: #7a2d1d;
+  color: #fff7ec;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+  box-shadow: none;
+}
+
+.retry-btn:hover {
+  opacity: 0.85;
+  transform: none;
+  box-shadow: none;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 640px) {

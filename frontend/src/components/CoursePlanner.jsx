@@ -26,6 +26,28 @@ function findBestMajorMatch(programs, detectedMajor) {
   );
 }
 
+function ReqProgress({ reqs, completedIds }) {
+  const done_set = new Set(completedIds);
+  let total = 0, done = 0;
+  for (const sec of (reqs?.sections || [])) {
+    if (sec.type !== "required") continue;
+    for (const c of (sec.courses || [])) {
+      total++;
+      if (done_set.has(c.course_id)) done++;
+    }
+  }
+  if (total === 0) return null;
+  const pct = Math.round((done / total) * 100);
+  return (
+    <div className="req-progress">
+      <div className="req-progress-bar">
+        <div className="req-progress-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="req-progress-text">{done} / {total} required</span>
+    </div>
+  );
+}
+
 function findBestMinorMatch(programs, detectedMinor) {
   if (!detectedMinor) return null;
   const base = detectedMinor
@@ -89,6 +111,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
 
   // Best professor per recommendation card
   const [bestProfessors, setBestProfessors] = useState({});
+
+  // Filter + toast
+  const [filterTag, setFilterTag] = useState("all");
+  const [toast, setToast]         = useState(null);
+  const toastTimerRef             = useRef(null);
 
   const majorRef         = useRef(null);
   const major2Ref        = useRef(null);
@@ -226,6 +253,12 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     setShowMinor2(false); setMinor2(null); setMinor2Query(""); setMinor2Reqs(null);
   };
 
+  const showToast = (msg) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => setToast(null), 4500);
+  };
+
   // ── Recommendations ───────────────────────────────────────────────────────
   const runRecommendations = async ({ majorVal, majorReqsVal, completedCoursesVal } = {}) => {
     const m1        = majorVal          ?? major;
@@ -242,7 +275,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       ...(showMinor2 && minor2 ? [{ name: minor2.name, reqs: minor2Reqs || {} }] : []),
     ];
 
-    setLoadingRecs(true); setRecsError(""); setRecommendations([]); setBestProfessors({}); setRecsElapsed(0);
+    setLoadingRecs(true); setRecsError(""); setRecommendations([]); setBestProfessors({}); setRecsElapsed(0); setFilterTag("all");
     recsTimerRef.current = setInterval(() => setRecsElapsed((n) => n + 1), 1000);
     try {
       const resp = await axios.post(`${backendUrl}/api/recommend`, {
@@ -291,9 +324,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     } finally {
       setTranscriptLoading(false);
     }
+    let matchedMajor = null, matchedMinor = null;
     if (detectedMinor && programs.length > 0) {
       const minorMatch = findBestMinorMatch(programs, detectedMinor);
       if (minorMatch) {
+        matchedMinor = minorMatch;
         setMinor(minorMatch); setMinorQuery(minorMatch.name); setMinorReqs(null);
         setMinorAutoDetected(true);
         fetchRequirements(minorMatch, "minor");
@@ -302,11 +337,16 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     if (detectedMajor && programs.length > 0) {
       const match = findBestMajorMatch(programs, detectedMajor);
       if (match) {
+        matchedMajor = match;
         setMajor(match); setMajorQuery(match.name); setMajorReqs(null);
         const reqs = await fetchRequirements(match, "major");
         if (reqs) await runRecommendations({ majorVal: match, majorReqsVal: reqs, completedCoursesVal: allCourses });
       }
     }
+    const toastParts = [`✓ ${allCourses.length} courses imported`];
+    if (matchedMajor) toastParts.push(`Major: ${matchedMajor.name}`);
+    if (matchedMinor) toastParts.push(`Minor: ${matchedMinor.name}`);
+    showToast(toastParts.join(" · "));
   };
 
   const handleOpenTestudo = () => {
@@ -383,9 +423,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       setTranscriptLoading(false);
     }
 
+    let matchedMajorPW = null, matchedMinorPW = null;
     if (detectedMinor && programs.length > 0) {
       const minorMatch = findBestMinorMatch(programs, detectedMinor);
       if (minorMatch) {
+        matchedMinorPW = minorMatch;
         setMinor(minorMatch); setMinorQuery(minorMatch.name); setMinorReqs(null);
         setMinorAutoDetected(true);
         fetchRequirements(minorMatch, "minor");
@@ -394,11 +436,16 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     if (detectedMajor && programs.length > 0) {
       const match = findBestMajorMatch(programs, detectedMajor);
       if (match) {
+        matchedMajorPW = match;
         setMajor(match); setMajorQuery(match.name); setMajorReqs(null);
         const reqs = await fetchRequirements(match, "major");
         if (reqs) await runRecommendations({ majorVal: match, majorReqsVal: reqs, completedCoursesVal: allCourses });
       }
     }
+    const twParts = [`✓ ${allCourses.length} courses imported`];
+    if (matchedMajorPW) twParts.push(`Major: ${matchedMajorPW.name}`);
+    if (matchedMinorPW) twParts.push(`Minor: ${matchedMinorPW.name}`);
+    showToast(twParts.join(" · "));
   };
 
   const applyManualCourses = () => {
@@ -421,11 +468,20 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     setMajor2(null); setMajor2Query(""); setMajor2Reqs(null); setShowMajor2(false);
     setMinor(null);  setMinorQuery("");  setMinorReqs(null);  setMinorAutoDetected(false);
     setMinor2(null); setMinor2Query(""); setMinor2Reqs(null); setShowMinor2(false);
-    setRecommendations([]); setTermLabel(""); setBestProfessors({});
+    setRecommendations([]); setTermLabel(""); setBestProfessors({}); setFilterTag("all");
     localStorage.removeItem(LS_KEY);
   };
 
-  const completedIds = completedCourses.map((c) => c.course_id);
+  const completedIds  = completedCourses.map((c) => c.course_id);
+  const completedSet  = new Set(completedIds);
+  const totalCredits  = recommendations.reduce((sum, r) => sum + (Number(r.credits) || 0), 0);
+  const filteredRecs  = recommendations.filter((r) => {
+    if (filterTag === "all")      return true;
+    if (filterTag === "required") return r.tags?.some((t) => t.includes("Required"));
+    if (filterTag === "gened")    return r.tags?.some((t) => t.startsWith("Gen-Ed"));
+    if (filterTag === "elective") return r.tags?.some((t) => t.includes("Elective"));
+    return true;
+  });
   const canRecommend = major && (completedCourses.length > 0 || majorReqs) && termId;
   const hasSession   = completedCourses.length > 0 || major || recommendations.length > 0;
 
@@ -631,9 +687,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 </div>
               )}
               {major && majorReqs && (
-                <p className="req-status">
-                  {loadingReqs ? "Loading requirements…" : `✓ ${countRequired(majorReqs)} required courses found`}
-                </p>
+                loadingReqs
+                  ? <p className="req-status">Loading requirements…</p>
+                  : completedCourses.length > 0
+                    ? <ReqProgress reqs={majorReqs} completedIds={completedIds} />
+                    : <p className="req-status">✓ {countRequired(majorReqs)} required courses found</p>
               )}
             </div>
 
@@ -686,9 +744,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                       </div>
                     )}
                     {major2 && major2Reqs && (
-                      <p className="req-status">
-                        {loadingReqs ? "Loading…" : `✓ ${countRequired(major2Reqs)} required courses found`}
-                      </p>
+                      loadingReqs
+                        ? <p className="req-status">Loading…</p>
+                        : completedCourses.length > 0
+                          ? <ReqProgress reqs={major2Reqs} completedIds={completedIds} />
+                          : <p className="req-status">✓ {countRequired(major2Reqs)} required courses found</p>
                     )}
                   </>
                 ) : <div />}
@@ -761,28 +821,77 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               onClick={() => runRecommendations()}
               disabled={!canRecommend || loadingRecs}
             >
-              {loadingRecs ? `Generating… ${recsElapsed}s` : "Get Recommendations →"}
+              {loadingRecs ? "Generating…" : "Get Recommendations →"}
             </button>
           </div>
-          {loadingRecs && recsElapsed >= 15 && (
-            <p className="section-hint" style={{ marginTop: 8 }}>
-              Still working… querying course data and AI ({recsElapsed}s). This can take up to 2 minutes.
-            </p>
+          {recsError && (
+            <div className="error-card">
+              <p>{recsError}</p>
+              <button type="button" className="retry-btn" onClick={() => runRecommendations()}>
+                Try again →
+              </button>
+            </div>
           )}
-          {recsError && <p className="error">{recsError}</p>}
         </div>
       </div>
 
-      {recommendations.length > 0 && (
+      {loadingRecs && (
+        <div className="recs-section">
+          <div className="recs-skeleton-header">
+            <h3 className="recs-skeleton-title">Building your plan…</h3>
+            {recsElapsed >= 15 && (
+              <p className="recs-skeleton-hint">Still working — this usually takes 30–90 seconds.</p>
+            )}
+          </div>
+          <div className="recs-grid">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="skeleton-card">
+                <div className="skeleton skeleton-id" />
+                <div className="skeleton skeleton-name" />
+                <div className="skeleton-tags">
+                  <div className="skeleton skeleton-tag" />
+                </div>
+                <div className="skeleton skeleton-line" />
+                <div className="skeleton skeleton-line skeleton-short" />
+                <div className="skeleton skeleton-btn" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loadingRecs && recommendations.length > 0 && (
         <div className="recs-section">
           <div className="results-header">
             <div className="results-title">
               <h3>Recommended for {termLabel}</h3>
-              <p className="count">{recommendations.length} courses</p>
+              <span className="count">{recommendations.length} courses</span>
+              {totalCredits > 0 && (
+                <span className={`credit-total${totalCredits > 18 ? " credit-over" : ""}`}>
+                  {totalCredits} cr
+                </span>
+              )}
             </div>
           </div>
+          <div className="filter-pills">
+            {[
+              { key: "all",      label: "All" },
+              { key: "required", label: "Required" },
+              { key: "gened",    label: "Gen-Ed" },
+              { key: "elective", label: "Elective" },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                className={`filter-pill${filterTag === key ? " filter-pill-active" : ""}`}
+                onClick={() => setFilterTag(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="recs-grid">
-            {recommendations.map((rec) => (
+            {filteredRecs.map((rec) => (
               <RecommendCard
                 key={rec.course_id}
                 rec={rec}
@@ -794,6 +903,15 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               />
             ))}
           </div>
+          {filteredRecs.length === 0 && (
+            <p className="filter-empty">No courses match this filter.</p>
+          )}
+        </div>
+      )}
+
+      {toast && (
+        <div className="toast" onClick={() => setToast(null)}>
+          {toast}
         </div>
       )}
     </section>

@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import random
 import re
-import time
 from typing import Any, Dict, List
 
 import requests
@@ -16,8 +15,27 @@ from config import (
     MAX_FEEDBACK_REVIEWS, MAX_REVIEW_CHARS, USER_AGENT,
     GROQ_API_KEY, GROQ_MODEL,
 )
+from services.cache import cached
 from services.external import umdio_get
 from services.prereqs import prereq_status
+
+
+@cached(ttl=14_400)
+def _fetch_dept_courses(dept: str, term_id: str) -> list:
+    try:
+        data = umdio_get("/courses", {"dept_id": dept, "semester": term_id, "per_page": "50"})
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+@cached(ttl=14_400)
+def _fetch_gened_courses(cat: str, term_id: str) -> list:
+    try:
+        data = umdio_get("/courses", {"gen_ed": cat, "semester": term_id, "per_page": "30"})
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
 
 
 def _headers() -> Dict[str, str]:
@@ -252,30 +270,18 @@ def get_recommendations(
     existing_ids: set = set()
 
     for dept in dept_ids[:8]:
-        try:
-            data = umdio_get("/courses", {"dept_id": dept, "semester": term_id, "per_page": "50"})
-            if isinstance(data, list):
-                for c in data:
-                    cid = c.get("course_id", "")
-                    if cid and cid not in existing_ids:
-                        available.append(c)
-                        existing_ids.add(cid)
-            time.sleep(0.1)
-        except Exception:
-            pass
+        for c in _fetch_dept_courses(dept, term_id):
+            cid = c.get("course_id", "")
+            if cid and cid not in existing_ids:
+                available.append(c)
+                existing_ids.add(cid)
 
     for cat in GENED_CATEGORIES:
-        try:
-            data = umdio_get("/courses", {"gen_ed": cat, "semester": term_id, "per_page": "30"})
-            if isinstance(data, list):
-                for c in data:
-                    cid = c.get("course_id", "")
-                    if cid and cid not in existing_ids:
-                        available.append(c)
-                        existing_ids.add(cid)
-            time.sleep(0.1)
-        except Exception:
-            pass
+        for c in _fetch_gened_courses(cat, term_id):
+            cid = c.get("course_id", "")
+            if cid and cid not in existing_ids:
+                available.append(c)
+                existing_ids.add(cid)
 
     completed_ids = [c if isinstance(c, str) else c.get("course_id", "") for c in (completed_courses or [])]
     completed_ids = [c for c in completed_ids if c]

@@ -10,6 +10,7 @@ from config import (
     GPA_MAP, GRADE_GROUPS,
     PLANETTERP_BASE, UMDIO_BASE, USER_AGENT,
 )
+from services.cache import cached
 
 
 def _headers() -> Dict[str, str]:
@@ -57,6 +58,7 @@ def compute_grade_stats(grade_data: List[dict]) -> dict:
     }
 
 
+@cached(ttl=14_400)
 def get_sections_for_course(course_id: str, term_id: str) -> List[str]:
     data = umdio_get("/courses/sections", {"course_id": course_id, "semester": term_id})
     if not isinstance(data, list):
@@ -72,6 +74,7 @@ def get_sections_for_course(course_id: str, term_id: str) -> List[str]:
     return professors
 
 
+@cached(ttl=14_400)
 def get_professor_data(name: str) -> dict:
     try:
         return pt_get("/professor", {"name": name, "reviews": "true"})
@@ -81,6 +84,7 @@ def get_professor_data(name: str) -> dict:
         raise
 
 
+@cached(ttl=14_400)
 def get_grade_stats(course_id: str, professor: str) -> dict:
     try:
         data = pt_get("/grades", {"course": course_id, "professor": professor})
