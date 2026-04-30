@@ -171,23 +171,39 @@ def scrape_transcript_playwright() -> dict:
         page.goto(f"{TESTUDO_BASE}/#/main/uotrans")
         print("[UMD Course Planner] Browser opened — please log in to Testudo (Duo Push if required)…")
 
+        _TRANSCRIPT_JS = (
+            "() => document.body.innerText.includes('UNOFFICIAL TRANSCRIPT') "
+            "|| document.body.innerText.includes('Historic Course Information') "
+            "|| document.body.innerText.includes('Cumulative GPA')"
+        )
+
         try:
-            # Wait until Angular has loaded post-login: we're on app.testudo.umd.edu
-            # and the hash has been set to a #/main/ route (proves authenticated + Angular ready)
+            # Wait until CAS + Duo auth completes and Angular has loaded
             page.wait_for_function(
                 "() => window.location.hostname === 'app.testudo.umd.edu' "
                 "&& window.location.hash.startsWith('#/main/')",
                 timeout=180_000,
             )
-            # Now authenticated — navigate directly to the transcript tab
-            page.goto(f"{TESTUDO_BASE}/#/main/uotrans")
-            page.wait_for_function(
-                "() => document.body.innerText.includes('UNOFFICIAL TRANSCRIPT') "
-                "|| document.body.innerText.includes('Historic Course Information') "
-                "|| document.body.innerText.includes('Cumulative GPA')",
-                timeout=30_000,
-            )
+            # Let Angular fully settle after the CAS redirect (networkidle + brief pause)
+            try:
+                page.wait_for_load_state("networkidle", timeout=8_000)
+            except PWTimeout:
+                pass
             page.wait_for_timeout(800)
+
+            # Navigate within Angular's router via hash change — avoids full reload
+            # and any risk of re-triggering CAS. Retry up to 3 times.
+            for attempt in range(3):
+                page.evaluate("window.location.hash = '#/main/uotrans'")
+                try:
+                    page.wait_for_function(_TRANSCRIPT_JS, timeout=10_000)
+                    break
+                except PWTimeout:
+                    if attempt == 2:
+                        raise
+                    page.wait_for_timeout(1_000)
+
+            page.wait_for_timeout(600)
         except PWTimeout as exc:
             browser.close()
             raise ValueError(
