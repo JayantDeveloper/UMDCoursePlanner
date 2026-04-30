@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 PLANETTERP_BASE = "https://api.planetterp.com/v1"
 UMDIO_BASE = "https://api.umd.io/v1"
 CATALOG_BASE = "https://academiccatalog.umd.edu"
@@ -9,9 +11,17 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
 )
 
+# Ollama — local dev / self-hosted
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+
+# Groq — production cloud fallback (same Llama models, free tier)
+# Set GROQ_API_KEY in the Render env to activate this provider automatically.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
 MAX_REVIEW_CHARS = 12000
 MAX_FEEDBACK_REVIEWS = 30
-GROQ_MODEL_ID = "llama-3.3-70b-versatile"
 CATALOG_TEXT_LIMIT = 7000
 AVAILABLE_COURSES_LIMIT = 100
 PROGRAMS_CACHE_TTL_H = 24

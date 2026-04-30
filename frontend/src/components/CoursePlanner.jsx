@@ -1,36 +1,48 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { getProfScore, GRADE_COLORS, PRIORITY_COLORS } from "../utils";
-
+import { RecommendCard } from "./RecommendCard";
 
 const LS_KEY = "umd_course_planner";
+const TESTUDO_URL = "https://app.testudo.umd.edu/main/uotrans";
 
+function countRequired(reqs) {
+  return (reqs.sections || [])
+    .filter((s) => s.type === "required")
+    .reduce((n, s) => n + (s.courses || []).length, 0);
+}
 
-async function fetchProfessorsForCourse(courseId, termId, backendUrl) {
-  const sectionsResp = await axios.post(`${backendUrl}/api/sections`, { courseId, termId });
-  const compareResp  = await axios.post(`${backendUrl}/api/compare`, {
-    courseId, professors: sectionsResp.data.professors,
-  });
-  return compareResp.data;
+function findBestMajorMatch(programs, detectedMajor) {
+  if (!detectedMajor) return null;
+  const base = detectedMajor
+    .replace(/\s*-[^-]+\s+T\s*$/, "")
+    .replace(/\s+T\s*$/, "")
+    .trim().toLowerCase();
+  const majors = programs.filter((p) => p.type === "major");
+  return (
+    majors.find((p) => p.name.toLowerCase() === base) ||
+    majors.find((p) => p.name.toLowerCase().startsWith(base)) ||
+    majors.find((p) => base.startsWith(p.name.toLowerCase())) ||
+    null
+  );
 }
 
 export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, transcriptEnabled = true }) {
   // Program selection
-  const [programs, setPrograms]           = useState([]);
-  const [majorQuery, setMajorQuery]       = useState("");
-  const [major, setMajor]                 = useState(null);
-  const [majorDropOpen, setMajorDropOpen] = useState(false);
-  const [major2Query, setMajor2Query]     = useState("");
-  const [major2, setMajor2]               = useState(null);
+  const [programs, setPrograms]             = useState([]);
+  const [majorQuery, setMajorQuery]         = useState("");
+  const [major, setMajor]                   = useState(null);
+  const [majorDropOpen, setMajorDropOpen]   = useState(false);
+  const [major2Query, setMajor2Query]       = useState("");
+  const [major2, setMajor2]                 = useState(null);
   const [major2DropOpen, setMajor2DropOpen] = useState(false);
-  const [showMajor2, setShowMajor2]       = useState(false);
-  const [minorQuery, setMinorQuery]       = useState("");
-  const [minor, setMinor]                 = useState(null);
-  const [minorDropOpen, setMinorDropOpen] = useState(false);
-  const [minor2Query, setMinor2Query]     = useState("");
-  const [minor2, setMinor2]               = useState(null);
+  const [showMajor2, setShowMajor2]         = useState(false);
+  const [minorQuery, setMinorQuery]         = useState("");
+  const [minor, setMinor]                   = useState(null);
+  const [minorDropOpen, setMinorDropOpen]   = useState(false);
+  const [minor2Query, setMinor2Query]       = useState("");
+  const [minor2, setMinor2]                 = useState(null);
   const [minor2DropOpen, setMinor2DropOpen] = useState(false);
-  const [showMinor2, setShowMinor2]       = useState(false);
+  const [showMinor2, setShowMinor2]         = useState(false);
 
   // Requirements
   const [majorReqs, setMajorReqs]     = useState(null);
@@ -40,23 +52,23 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
   const [loadingReqs, setLoadingReqs] = useState(false);
 
   // Transcript / completed courses
-  const [completedCourses, setCompletedCourses] = useState([]);
-  const [manualInput, setManualInput] = useState("");
+  const [completedCourses, setCompletedCourses]   = useState([]);
+  const [manualInput, setManualInput]             = useState("");
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError]     = useState("");
-  const [pasteMode, setPasteMode]           = useState(false);
-  const [pasteText, setPasteText]           = useState("");
-  const [waitingClipboard, setWaitingClipboard] = useState(false);
+  const [pasteMode, setPasteMode]                 = useState(false);
+  const [pasteText, setPasteText]                 = useState("");
+  const [waitingClipboard, setWaitingClipboard]   = useState(false);
 
   // Recommendations
-  const [termId, setTermId]               = useState(semesters[0]?.termId || "");
-  const [interests, setInterests]         = useState("");
+  const [termId, setTermId]                   = useState(semesters[0]?.termId || "");
+  const [interests, setInterests]             = useState("");
   const [recommendations, setRecommendations] = useState([]);
-  const [loadingRecs, setLoadingRecs]     = useState(false);
-  const [recsError, setRecsError]         = useState("");
-  const [termLabel, setTermLabel]         = useState("");
+  const [loadingRecs, setLoadingRecs]         = useState(false);
+  const [recsError, setRecsError]             = useState("");
+  const [termLabel, setTermLabel]             = useState("");
 
-  // Best professor per card (from /api/best-professors)
+  // Best professor per recommendation card
   const [bestProfessors, setBestProfessors] = useState({});
 
   const majorRef         = useRef(null);
@@ -131,23 +143,15 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     return () => document.removeEventListener("click", h);
   }, []);
 
-  // ── Filtered dropdown lists ───────────────────────────────────────────────
+  // ── Filtered dropdown lists (no artificial cap — user can scroll all) ─────
   const matchesQuery = (p, q) => {
     const lq = q.toLowerCase();
     return p.name.toLowerCase().includes(lq) || (p.school || "").toLowerCase().includes(lq);
   };
-  const filteredMajors = programs
-    .filter((p) => p.type === "major" && matchesQuery(p, majorQuery))
-    .slice(0, 12);
-  const filteredMajors2 = programs
-    .filter((p) => p.type === "major" && matchesQuery(p, major2Query))
-    .slice(0, 12);
-  const filteredMinors = programs
-    .filter((p) => p.type === "minor" && matchesQuery(p, minorQuery))
-    .slice(0, 12);
-  const filteredMinors2 = programs
-    .filter((p) => p.type === "minor" && matchesQuery(p, minor2Query))
-    .slice(0, 12);
+  const filteredMajors  = programs.filter((p) => p.type === "major" && matchesQuery(p, majorQuery));
+  const filteredMajors2 = programs.filter((p) => p.type === "major" && matchesQuery(p, major2Query));
+  const filteredMinors  = programs.filter((p) => p.type === "minor" && matchesQuery(p, minorQuery));
+  const filteredMinors2 = programs.filter((p) => p.type === "minor" && matchesQuery(p, minor2Query));
 
   // ── Requirements ─────────────────────────────────────────────────────────
   const fetchRequirements = async (program, type) => {
@@ -157,7 +161,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
       const resp = await axios.post(`${backendUrl}/api/requirements`, {
         catalogUrl: program.url, programName: program.name,
       });
-      if (type === "major")  setMajorReqs(resp.data);
+      if (type === "major")       setMajorReqs(resp.data);
       else if (type === "major2") setMajor2Reqs(resp.data);
       else if (type === "minor")  setMinorReqs(resp.data);
       else if (type === "minor2") setMinor2Reqs(resp.data);
@@ -198,7 +202,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     setShowMinor2(false); setMinor2(null); setMinor2Query(""); setMinor2Reqs(null);
   };
 
-  // ── Recommendations — accepts overrides for auto-chain from transcript ────
+  // ── Recommendations ───────────────────────────────────────────────────────
   const runRecommendations = async ({ majorVal, majorReqsVal, completedCoursesVal } = {}) => {
     const m1        = majorVal          ?? major;
     const r1        = majorReqsVal      ?? majorReqs;
@@ -258,8 +262,6 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     }
   };
 
-  const TESTUDO_URL = "https://app.testudo.umd.edu/#/main/uotrans?null";
-
   const handleOpenTestudo = () => {
     if (clipboardCleanup.current) { clipboardCleanup.current(); clipboardCleanup.current = null; }
     testudoWinRef.current = window.open(TESTUDO_URL, "_blank");
@@ -279,9 +281,9 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
           await parseAndApplyTranscript(text);
           return;
         }
-        setTranscriptError("Clipboard didn't have your transcript — if Testudo landed on the Schedule page after login, use the button below to go to your transcript, then copy the whole page (Ctrl+A, Ctrl+C) and switch back.");
+        // Clipboard had content but it wasn't the transcript — keep waiting
+        setTranscriptError("Clipboard didn't look like a transcript. Make sure you're on the Unofficial Transcript page, then press Ctrl+A → Ctrl+C and switch back.");
         setWaitingClipboard(true);
-        // Re-register listener for the second attempt
         window.addEventListener("focus", onFocus);
         clipboardCleanup.current = cleanup;
         return;
@@ -297,12 +299,23 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
     window.addEventListener("focus", onFocus);
   };
 
+  const goToTranscriptTab = () => {
+    try {
+      if (testudoWinRef.current && !testudoWinRef.current.closed) {
+        testudoWinRef.current.location.href = TESTUDO_URL;
+        testudoWinRef.current.focus();
+      } else {
+        testudoWinRef.current = window.open(TESTUDO_URL, "_blank");
+      }
+    } catch (_) {}
+  };
+
   const handlePasteSubmit = async () => {
     if (!pasteText.trim()) return;
     await parseAndApplyTranscript(pasteText);
   };
 
-  // ── Transcript import — auto-chains to requirements + recommendations ─────
+  // ── Transcript import — Playwright path (local only) ─────────────────────
   const handleImportTranscript = async () => {
     setTranscriptLoading(true); setTranscriptError("");
     let detectedMajor = "", allCourses = [];
@@ -384,7 +397,8 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
               <button
                 type="button"
                 className={`transcript-btn ${transcriptLoading ? "transcript-btn-waiting" : ""}`}
-                onClick={handleImportTranscript} disabled={transcriptLoading}
+                onClick={handleImportTranscript}
+                disabled={transcriptLoading}
               >
                 {transcriptLoading
                   ? <><span className="transcript-spinner" />Waiting for Testudo login…</>
@@ -414,25 +428,29 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 <p className="transcript-steps-title">On the Testudo tab that just opened:</p>
                 <ol>
                   <li>Log in with your UMD credentials &amp; Duo</li>
-                  <li>Press <strong>Ctrl+A</strong> to select all, then <strong>Ctrl+C</strong> to copy</li>
+                  <li>After login you&apos;ll land on the <strong>Schedule page</strong> — click <strong>Go to Transcript</strong> below</li>
+                  <li>Press <strong>Ctrl+A</strong> then <strong>Ctrl+C</strong> to copy the full page</li>
                   <li>Switch back to this tab — it imports automatically</li>
                 </ol>
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                <button type="button" className="secondary"
-                  onClick={() => {
-                    try {
-                      if (testudoWinRef.current && !testudoWinRef.current.closed) {
-                        testudoWinRef.current.location.href = TESTUDO_URL;
-                        testudoWinRef.current.focus();
-                      }
-                    } catch (_) {}
-                    setTranscriptError("Testudo has been redirected to your transcript — switch to that tab, copy the whole page (Ctrl+A, Ctrl+C), then come back here.");
-                  }}>
-                  Landed on Schedule page? Go to transcript
+              <div className="transcript-action-row">
+                <button
+                  type="button"
+                  className="transcript-btn"
+                  onClick={goToTranscriptTab}
+                >
+                  <img src="/testudo-example-color.webp" alt="" className="testudo-icon" />
+                  Go to Transcript →
                 </button>
-                <button type="button" className="secondary"
-                  onClick={() => { setWaitingClipboard(false); setPasteMode(true); if (clipboardCleanup.current) { clipboardCleanup.current(); } }}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setWaitingClipboard(false);
+                    setPasteMode(true);
+                    if (clipboardCleanup.current) clipboardCleanup.current();
+                  }}
+                >
                   Paste manually instead
                 </button>
               </div>
@@ -466,13 +484,9 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                 onChange={(e) => setPasteText(e.target.value)}
                 placeholder="Paste your transcript text here…"
                 rows={5}
-                style={{
-                  width: "100%", borderRadius: 12, border: "1px solid #d1c4b1",
-                  padding: "10px 12px", fontSize: 12, fontFamily: "Space Mono, monospace",
-                  background: "#fffaf4", resize: "vertical", boxSizing: "border-box",
-                }}
+                className="transcript-paste-area"
               />
-              <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              <div className="transcript-action-row">
                 <button
                   type="button"
                   className="transcript-btn"
@@ -483,8 +497,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                     ? <><span className="transcript-spinner" />Parsing…</>
                     : <><img src="/testudo-example-color.webp" alt="" className="testudo-icon" />Parse Transcript</>}
                 </button>
-                <button type="button" className="secondary" style={{ alignSelf: "center" }}
-                  onClick={() => { setPasteMode(false); setPasteText(""); setTranscriptError(""); setWaitingClipboard(false); }}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => { setPasteMode(false); setPasteText(""); setTranscriptError(""); setWaitingClipboard(false); }}
+                >
                   Cancel
                 </button>
               </div>
@@ -529,7 +546,11 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
         {/* Step 2 — Major / Minor */}
         <div className="planner-section step-divider">
           <p className="section-label"><span className="step-badge">2</span>Your program</p>
-          <p className="section-hint">{transcriptEnabled ? "Auto-filled from your transcript. Adjust if needed, or add a minor." : "Search for your major and optional minor below."}</p>
+          <p className="section-hint">
+            {transcriptEnabled
+              ? "Auto-filled from your transcript. Adjust if needed, or add a minor."
+              : "Search for your major and optional minor below."}
+          </p>
 
           {/* Row: Major 1 + Minor 1 */}
           <div className="planner-row">
@@ -659,32 +680,32 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
 
         {/* Step 3 — Semester + interests + submit */}
         <div className="planner-section step-divider">
-        <p className="section-label"><span className="step-badge">3</span>Plan your semester</p>
-        <div className="planner-row planner-bottom-row">
-          <div className="field-group">
-            <label>Plan for semester</label>
-            <select value={termId} onChange={(e) => setTermId(e.target.value)}>
-              {semesters.map((s) => (
-                <option key={s.termId} value={s.termId}>{s.label}</option>
-              ))}
-            </select>
+          <p className="section-label"><span className="step-badge">3</span>Plan your semester</p>
+          <div className="planner-row planner-bottom-row">
+            <div className="field-group">
+              <label>Plan for semester</label>
+              <select value={termId} onChange={(e) => setTermId(e.target.value)}>
+                {semesters.map((s) => (
+                  <option key={s.termId} value={s.termId}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field-group interests-field">
+              <label>Interests / goals <span className="optional">(optional)</span></label>
+              <input
+                type="text" placeholder="e.g. AI/ML, web dev, finance…"
+                value={interests} onChange={(e) => setInterests(e.target.value)}
+              />
+            </div>
+            <button
+              type="button" className="compare-btn"
+              onClick={() => runRecommendations()}
+              disabled={!canRecommend || loadingRecs}
+            >
+              {loadingRecs ? "Generating…" : "Get Recommendations →"}
+            </button>
           </div>
-          <div className="field-group interests-field">
-            <label>Interests / goals <span className="optional">(optional)</span></label>
-            <input
-              type="text" placeholder="e.g. AI/ML, web dev, finance…"
-              value={interests} onChange={(e) => setInterests(e.target.value)}
-            />
-          </div>
-          <button
-            type="button" className="compare-btn"
-            onClick={() => runRecommendations()}
-            disabled={!canRecommend || loadingRecs}
-          >
-            {loadingRecs ? "Generating…" : "Get Recommendations →"}
-          </button>
-        </div>
-        {recsError && <p className="error">{recsError}</p>}
+          {recsError && <p className="error">{recsError}</p>}
         </div>
       </div>
 
@@ -712,190 +733,5 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
         </div>
       )}
     </section>
-  );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function findBestMajorMatch(programs, detectedMajor) {
-  if (!detectedMajor) return null;
-  const base = detectedMajor
-    .replace(/\s*-[^-]+\s+T\s*$/, "")
-    .replace(/\s+T\s*$/, "")
-    .trim().toLowerCase();
-  const majors = programs.filter((p) => p.type === "major");
-  return (
-    majors.find((p) => p.name.toLowerCase() === base) ||
-    majors.find((p) => p.name.toLowerCase().startsWith(base)) ||
-    majors.find((p) => base.startsWith(p.name.toLowerCase())) ||
-    null
-  );
-}
-
-function tagClass(tag) {
-  if (tag === "Major Required")  return "tag-major-req";
-  if (tag === "Major Elective")  return "tag-major-elec";
-  if (tag === "Minor Required")  return "tag-minor-req";
-  if (tag === "Minor Elective")  return "tag-minor-elec";
-  if (tag.startsWith("Gen-Ed"))  return "tag-gened";
-  if (tag === "Upper Division")  return "tag-upper";
-  if (tag === "Check Prereqs")   return "tag-prereq-warn";
-  return "tag-other";
-}
-
-function countRequired(reqs) {
-  return (reqs.sections || [])
-    .filter((s) => s.type === "required")
-    .reduce((n, s) => n + (s.courses || []).length, 0);
-}
-
-// ── RecommendCard ─────────────────────────────────────────────────────────────
-
-function RecommendCard({ rec, isCompleted, bestProf, backendUrl, termId, onOpenProfModal }) {
-  const [expanded,     setExpanded]     = useState(false);
-  const [allProfs,     setAllProfs]     = useState([]);
-  const [loadingProfs, setLoadingProfs] = useState(false);
-  const [profsError,   setProfsError]   = useState("");
-
-  const handleExpandProfs = async () => {
-    if (expanded) { setExpanded(false); return; }
-    setExpanded(true);
-    if (allProfs.length > 0) return;
-    setLoadingProfs(true); setProfsError("");
-    try {
-      const compareData = await fetchProfessorsForCourse(rec.course_id, termId, backendUrl);
-      const sorted = [...(compareData.professors || [])].sort(
-        (a, b) => (getProfScore(b) ?? -1) - (getProfScore(a) ?? -1)
-      );
-      setAllProfs(sorted);
-    } catch (err) {
-      setProfsError(err?.response?.data?.error || "Could not load professors.");
-      setExpanded(false);
-    } finally {
-      setLoadingProfs(false);
-    }
-  };
-
-  const priorityColor = PRIORITY_COLORS[rec.priority] ?? PRIORITY_COLORS.default;
-  const tags = rec.tags || [];
-
-  return (
-    <div className="rec-card">
-      {/* Course header */}
-      <div className="rec-card-header">
-        <div>
-          <span className="rec-course-id">{rec.course_id}</span>
-          <span className="priority-dot" style={{ background: priorityColor }} title={`${rec.priority} priority`} />
-        </div>
-        {rec.credits && <span className="rec-credits">{rec.credits} cr</span>}
-      </div>
-
-      <p className="rec-name">{rec.name}</p>
-
-      {tags.length > 0 && (
-        <div className="rec-tags">
-          {tags.map((t) => <span key={t} className={`rec-tag ${tagClass(t)}`}>{t}</span>)}
-        </div>
-      )}
-
-      {rec.fulfills && <p className="rec-fulfills">{rec.fulfills}</p>}
-      <p className="rec-reason">{rec.reason}</p>
-      {rec.prereqs && <p className="rec-prereqs">Prereqs: {rec.prereqs}</p>}
-
-      {isCompleted ? (
-        <p className="rec-done">✓ Already completed</p>
-      ) : (
-        <>
-          {/* Best prof preview — hidden when full list is expanded */}
-          {!expanded && bestProf && (
-            <div className="rec-best-prof">
-              <span className="rec-prof-label">Best prof this semester</span>
-              <div className="rec-prof-row">
-                {bestProf.slug ? (
-                  <a href={`https://planetterp.com/professor/${bestProf.slug}`}
-                    target="_blank" rel="noreferrer" className="rec-prof-name">
-                    {bestProf.name}
-                  </a>
-                ) : <span className="rec-prof-name">{bestProf.name}</span>}
-                <div className="rec-prof-stats">
-                  {bestProf.score  != null && <span className="rec-prof-score"  title="Score">{bestProf.score}</span>}
-                  {bestProf.avgRating != null && <span className="rec-prof-rating">★ {bestProf.avgRating.toFixed(1)}</span>}
-                  {bestProf.avgGpa    != null && <span className="rec-prof-gpa">GPA {bestProf.avgGpa}</span>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Expanded: full ranked professor list */}
-          {expanded && (
-            <div className="inline-profs">
-              <p className="inline-profs-title">All professors — ranked by Score</p>
-              {loadingProfs && <p className="inline-profs-loading">Loading…</p>}
-              {profsError   && <p className="error" style={{ fontSize: 13 }}>{profsError}</p>}
-              {allProfs.map((prof) => <MiniProfRow key={prof.name} prof={prof} />)}
-              {allProfs.length > 0 && (
-                <button
-                  type="button" className="secondary open-full-btn"
-                  onClick={() => onOpenProfModal(rec.course_id, termId)}
-                >
-                  Get AI prep summaries →
-                </button>
-              )}
-            </div>
-          )}
-
-          <button
-            type="button"
-            className="secondary expand-profs-btn"
-            onClick={handleExpandProfs}
-            disabled={loadingProfs}
-          >
-            {loadingProfs ? "Loading…" : expanded ? "Show less" : "See all professors →"}
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── MiniProfRow ───────────────────────────────────────────────────────────────
-
-function MiniProfRow({ prof }) {
-  const score = getProfScore(prof);
-  const dist  = prof.grades?.distribution || {};
-  const hasDist = Object.values(dist).some(Boolean);
-
-  return (
-    <div className="mini-prof-row">
-      <div className="mini-prof-identity">
-        {score != null && (
-          <span className="rec-prof-score" title="Score">{score}</span>
-        )}
-        {prof.slug ? (
-          <a href={`https://planetterp.com/professor/${prof.slug}`}
-            target="_blank" rel="noreferrer" className="mini-prof-name">
-            {prof.name}
-          </a>
-        ) : <span className="mini-prof-name">{prof.name}</span>}
-        {prof.avgRating   != null && <span className="rec-prof-rating">★ {prof.avgRating.toFixed(1)}</span>}
-        {prof.grades?.avgGpa != null && <span className="rec-prof-gpa">GPA {prof.grades.avgGpa}</span>}
-        {prof.grades?.aRate  != null && <span className="rec-prof-gpa">A {prof.grades.aRate}%</span>}
-      </div>
-      {hasDist && <MiniGradeBar distribution={dist} />}
-    </div>
-  );
-}
-
-function MiniGradeBar({ distribution }) {
-  return (
-    <div className="mini-grade-bar">
-      {Object.entries(GRADE_COLORS).map(([grade, color]) => {
-        const pct = distribution[grade] || 0;
-        if (!pct) return null;
-        return (
-          <div key={grade} style={{ flex: `0 0 ${pct}%`, background: color }} title={`${grade}: ${pct}%`} />
-        );
-      })}
-    </div>
   );
 }

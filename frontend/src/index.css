@@ -667,7 +667,7 @@ button:disabled {
   border: 1px solid #e2d6c4;
   border-radius: 12px;
   box-shadow: 0 12px 20px rgba(48, 32, 24, 0.12);
-  max-height: 220px;
+  max-height: 360px;
   overflow-y: auto;
   z-index: 20;
   padding: 6px;
@@ -940,6 +940,26 @@ button:disabled {
 
 .transcript-steps li {
   line-height: 1.5;
+}
+
+.transcript-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.transcript-paste-area {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #d1c4b1;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: "Space Mono", monospace;
+  background: #fffaf4;
+  resize: vertical;
+  box-sizing: border-box;
 }
 
 .completed-chips {

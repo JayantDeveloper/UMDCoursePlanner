@@ -156,20 +156,26 @@ def scrape_transcript_playwright() -> dict:
         context = browser.new_context(viewport={"width": W, "height": H})
         page = context.new_page()
 
-        page.goto(f"{TESTUDO_BASE}/#/main/uotrans?null")
+        # Navigate to the base Testudo URL — CAS intercepts unauthenticated requests
+        page.goto(f"{TESTUDO_BASE}/main/uotrans")
         print("[UMD Course Planner] Browser opened — please log in to Testudo (Duo Push if required)…")
 
         try:
+            # Wait until CAS login completes: user is back on app.testudo.umd.edu
+            # and NOT on an intermediate CAS/shib page
             page.wait_for_function(
-                "() => window.location.hostname === 'app.testudo.umd.edu'",
+                "() => window.location.hostname === 'app.testudo.umd.edu' "
+                "&& window.location.pathname !== '/' "
+                "&& document.readyState === 'complete'",
                 timeout=180_000,
             )
-            page.goto(f"{TESTUDO_BASE}/#/main/uotrans?null")
+            # CAS redirects to the schedule page after login — explicitly navigate to transcript
+            page.goto(f"{TESTUDO_BASE}/main/uotrans")
             page.wait_for_function(
                 "() => document.body.innerText.includes('UNOFFICIAL TRANSCRIPT') "
                 "|| document.body.innerText.includes('Historic Course Information') "
                 "|| document.body.innerText.includes('Cumulative GPA')",
-                timeout=20_000,
+                timeout=30_000,
             )
             page.wait_for_timeout(800)
         except PWTimeout as exc:

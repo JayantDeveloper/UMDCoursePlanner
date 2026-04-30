@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 
-from flask import Flask, Response, jsonify
+import requests
+from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
+from config import OLLAMA_BASE_URL, OLLAMA_MODEL, GROQ_API_KEY, GROQ_MODEL
 from routes.comparison import bp as comparison_bp
 from routes.planner import bp as planner_bp
 
@@ -19,25 +21,32 @@ CORS(
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 )
 
-
-@app.after_request
-def ensure_cors(response: Response) -> Response:
-    response.headers.setdefault("Access-Control-Allow-Origin", "*")
-    response.headers.setdefault("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
-    response.headers.setdefault("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    return response
-
-
 app.register_blueprint(comparison_bp)
 app.register_blueprint(planner_bp)
 
 
 @app.route("/api/health")
 def health():
+    if GROQ_API_KEY:
+        return jsonify({
+            "status": "ok",
+            "ai_provider": "groq",
+            "ai_model": GROQ_MODEL,
+        })
+
+    try:
+        r = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3)
+        ollama_ok = r.status_code == 200
+        models = [m["name"] for m in (r.json().get("models") or [])]
+    except Exception:
+        ollama_ok = False
+        models = []
     return jsonify({
         "status": "ok",
-        "groq_key_set": bool(os.environ.get("GROQ_API_KEY")),
-        "groq_key_prefix": (os.environ.get("GROQ_API_KEY") or "")[:8] or None,
+        "ai_provider": "ollama",
+        "ai_model": OLLAMA_MODEL,
+        "ollama_reachable": ollama_ok,
+        "models_available": models,
     })
 
 

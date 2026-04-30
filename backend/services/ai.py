@@ -1,21 +1,21 @@
-"""Groq AI wrapper, feedback generation, requirements scraping, and recommendations."""
+"""Ollama AI wrapper, feedback generation, requirements scraping, and recommendations."""
 from __future__ import annotations
 
 import json
-import os
 import random
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import requests
 from bs4 import BeautifulSoup
-from groq import Groq
 
 from config import (
     ALL_GENEDS, AVAILABLE_COURSES_LIMIT, CATALOG_BASE,
-    CATALOG_TEXT_LIMIT, GENED_CATEGORIES, GROQ_MODEL_ID,
+    CATALOG_TEXT_LIMIT, GENED_CATEGORIES,
     MAX_FEEDBACK_REVIEWS, MAX_REVIEW_CHARS, USER_AGENT,
+    OLLAMA_BASE_URL, OLLAMA_MODEL,
+    GROQ_API_KEY, GROQ_MODEL,
 )
 from services.external import umdio_get
 from services.prereqs import prereq_status
@@ -25,25 +25,51 @@ def _headers() -> Dict[str, str]:
     return {"User-Agent": USER_AGENT, "Accept": "application/json"}
 
 
-def _client() -> Groq:
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        raise ValueError(
-            "GROQ_API_KEY is not set on this server. "
-            "Visit /api/health to check environment status."
-        )
-    return Groq(api_key=api_key)
-
-
 def _chat(prompt: str, max_tokens: int = 2048, temperature: float = 0.4) -> str:
-    client = _client()
-    response = client.chat.completions.create(
-        model=GROQ_MODEL_ID,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=max_tokens,
-        temperature=temperature,
+    """
+    Route to the configured AI provider.
+    - Local / self-hosted: Ollama (OLLAMA_BASE_URL, default localhost:11434)
+    - Cloud production:    Groq   (GROQ_API_KEY set in Render env)
+    Groq serves the same Llama models with no cost — ideal for shared hosting
+    where Ollama cannot run due to RAM constraints.
+    """
+    if GROQ_API_KEY:
+        return _chat_groq(prompt, max_tokens, temperature)
+    return _chat_ollama(prompt, max_tokens, temperature)
+
+
+def _chat_ollama(prompt: str, max_tokens: int, temperature: float) -> str:
+    resp = requests.post(
+        f"{OLLAMA_BASE_URL}/api/chat",
+        json={
+            "model": OLLAMA_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"num_predict": max_tokens, "temperature": temperature},
+        },
+        timeout=180,
     )
-    return (response.choices[0].message.content or "").strip()
+    resp.raise_for_status()
+    return (resp.json().get("message", {}).get("content") or "").strip()
+
+
+def _chat_groq(prompt: str, max_tokens: int, temperature: float) -> str:
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": GROQ_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return (resp.json()["choices"][0]["message"]["content"] or "").strip()
 
 
 def strip_markdown_fences(text: str) -> str:
