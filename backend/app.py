@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from flask import Flask, Response
+import os
+
+from flask import Flask, Response, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -28,6 +30,15 @@ def ensure_cors(response: Response) -> Response:
 
 app.register_blueprint(comparison_bp)
 app.register_blueprint(planner_bp)
+
+
+@app.route("/api/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "groq_key_set": bool(os.environ.get("GROQ_API_KEY")),
+        "groq_key_prefix": (os.environ.get("GROQ_API_KEY") or "")[:8] or None,
+    })
 
 
 if __name__ == "__main__":

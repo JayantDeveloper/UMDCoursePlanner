@@ -279,14 +279,7 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
           await parseAndApplyTranscript(text);
           return;
         }
-        // Clipboard didn't have transcript — probably landed on Schedule page after CAS login.
-        // Re-navigate the Testudo tab to the transcript URL (cross-origin navigation is allowed).
-        try {
-          if (testudoWinRef.current && !testudoWinRef.current.closed) {
-            testudoWinRef.current.location.href = TESTUDO_URL;
-          }
-        } catch (_) {}
-        setTranscriptError("Looks like Testudo redirected you to the Schedule page after login. We've sent the Testudo tab to your transcript — copy it again (Ctrl+A, Ctrl+C) and switch back here.");
+        setTranscriptError("Clipboard didn't have your transcript — if Testudo landed on the Schedule page after login, use the button below to go to your transcript, then copy the whole page (Ctrl+A, Ctrl+C) and switch back.");
         setWaitingClipboard(true);
         // Re-register listener for the second attempt
         window.addEventListener("focus", onFocus);
@@ -425,10 +418,24 @@ export default function CoursePlanner({ backendUrl, semesters, onOpenProfModal, 
                   <li>Switch back to this tab — it imports automatically</li>
                 </ol>
               </div>
-              <button type="button" className="secondary" style={{ marginTop: 8 }}
-                onClick={() => { setWaitingClipboard(false); setPasteMode(true); if (clipboardCleanup.current) { clipboardCleanup.current(); } }}>
-                Paste manually instead
-              </button>
+              <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                <button type="button" className="secondary"
+                  onClick={() => {
+                    try {
+                      if (testudoWinRef.current && !testudoWinRef.current.closed) {
+                        testudoWinRef.current.location.href = TESTUDO_URL;
+                        testudoWinRef.current.focus();
+                      }
+                    } catch (_) {}
+                    setTranscriptError("Testudo has been redirected to your transcript — switch to that tab, copy the whole page (Ctrl+A, Ctrl+C), then come back here.");
+                  }}>
+                  Landed on Schedule page? Go to transcript
+                </button>
+                <button type="button" className="secondary"
+                  onClick={() => { setWaitingClipboard(false); setPasteMode(true); if (clipboardCleanup.current) { clipboardCleanup.current(); } }}>
+                  Paste manually instead
+                </button>
+              </div>
               {transcriptError && <p className="error">{transcriptError}</p>}
             </>
           ) : !pasteMode ? (

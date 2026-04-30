@@ -28,7 +28,10 @@ def _headers() -> Dict[str, str]:
 def _client() -> Groq:
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("Missing GROQ_API_KEY")
+        raise ValueError(
+            "GROQ_API_KEY is not set on this server. "
+            "Visit /api/health to check environment status."
+        )
     return Groq(api_key=api_key)
 
 
