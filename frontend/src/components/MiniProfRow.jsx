@@ -5,6 +5,8 @@ export function MiniProfRow({ prof }) {
   const dist = prof.grades?.distribution || {};
   const hasDist = Object.values(dist).some(Boolean);
 
+  const hasStats = prof.avgRating != null || prof.grades?.avgGpa != null || prof.grades?.aRate != null;
+
   return (
     <div className="mini-prof-row">
       <div className="mini-prof-identity">
@@ -28,16 +30,20 @@ export function MiniProfRow({ prof }) {
         ) : (
           <span className="mini-prof-name">{prof.name}</span>
         )}
-        {prof.avgRating != null && (
-          <span className="rec-prof-rating">★ {prof.avgRating.toFixed(1)}</span>
-        )}
-        {prof.grades?.avgGpa != null && (
-          <span className="rec-prof-gpa">GPA {prof.grades.avgGpa}</span>
-        )}
-        {prof.grades?.aRate != null && (
-          <span className="rec-prof-gpa">A {prof.grades.aRate}%</span>
-        )}
       </div>
+      {hasStats && (
+        <div className="mini-prof-stats">
+          {prof.avgRating != null && (
+            <span className="rec-prof-rating">★ {prof.avgRating.toFixed(1)}</span>
+          )}
+          {prof.grades?.avgGpa != null && (
+            <span className="rec-prof-gpa">GPA {prof.grades.avgGpa}</span>
+          )}
+          {prof.grades?.aRate != null && (
+            <span className="rec-prof-gpa">A {prof.grades.aRate}%</span>
+          )}
+        </div>
+      )}
       {hasDist && <MiniGradeBar distribution={dist} />}
     </div>
   );

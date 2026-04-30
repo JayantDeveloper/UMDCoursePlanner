@@ -1299,7 +1299,13 @@ a.rec-prof-name:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+}
+
+.mini-prof-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 2px;
 }
 
 .mini-prof-name {
